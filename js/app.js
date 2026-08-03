@@ -10,12 +10,13 @@ const appState = {
   toCurrency: "EUR",
   activeTimeframe: "30D",
   isDarkMode: true,
-  lastCalculatedAmount: 0.00
+  lastCalculatedAmount: 0.0,
 };
 
 // Global reference for statistics transitions
 let prevStats = { totalConversions: 0, averageAmount: 0 };
 let uiManager;
+let editingHoldingId = null;
 
 /**
  * Recalculates conversion estimate based on amount input
@@ -31,7 +32,12 @@ function handleCalculation() {
     return;
   }
 
-  const result = CurrencyConverter.convert(amount, appState.fromCurrency, appState.toCurrency, appState.rates);
+  const result = CurrencyConverter.convert(
+    amount,
+    appState.fromCurrency,
+    appState.toCurrency,
+    appState.rates,
+  );
   toAmountInput.value = result.toFixed(2);
   appState.lastCalculatedAmount = result;
 }
@@ -42,16 +48,25 @@ function handleCalculation() {
 function drawChart() {
   const base = appState.fromCurrency;
   const target = appState.toCurrency;
-  
+
   const rateBase = appState.rates[base] || 1;
   const rateTarget = appState.rates[target] || 1;
   const currentRate = rateTarget / rateBase;
 
   // Generate historical data
-  const chartData = CurrencyAPI.generateHistoricalRates(base, target, appState.activeTimeframe, currentRate);
-  
+  const chartData = CurrencyAPI.generateHistoricalRates(
+    base,
+    target,
+    appState.activeTimeframe,
+    currentRate,
+  );
+
   // Render Chart
-  ChartManager.renderHistoricalChart("fx-history-chart", chartData, appState.isDarkMode);
+  ChartManager.renderHistoricalChart(
+    "fx-history-chart",
+    chartData,
+    appState.isDarkMode,
+  );
 
   // Update visual text titles
   const chartTitle = document.getElementById("chart-currency-pair");
@@ -67,7 +82,9 @@ function drawChart() {
   if (chartChangePct) {
     const sign = chartData.percentChange >= 0 ? "+" : "";
     chartChangePct.textContent = `${sign}${chartData.percentChange.toFixed(2)}%`;
-    chartChangePct.className = "chart-change-pct " + (chartData.percentChange >= 0 ? "trend-up" : "trend-down");
+    chartChangePct.className =
+      "chart-change-pct " +
+      (chartData.percentChange >= 0 ? "trend-up" : "trend-down");
   }
 
   // Update timeframe trends
@@ -81,11 +98,15 @@ function drawChart() {
 function refreshDashboard() {
   const history = StorageManager.getConversionHistory();
   const favorites = StorageManager.getFavoritePairs();
-  
+
   // 1. Calculate and update dashboard summaries
-  const stats = AnalyticsManager.calculateAnalyticsSummary(appState.rates, history, favorites);
+  const stats = AnalyticsManager.calculateAnalyticsSummary(
+    appState.rates,
+    history,
+    favorites,
+  );
   uiManager.renderAnalyticsDashboard(stats, prevStats);
-  
+
   // Cache stats for transition animations
   prevStats.totalConversions = stats.totalConversions;
   prevStats.averageAmount = stats.averageConversionAmountUsd;
@@ -99,7 +120,8 @@ function refreshDashboard() {
   // 4. Update live conversion display
   const base = appState.fromCurrency;
   const target = appState.toCurrency;
-  const currentRate = (appState.rates[target] || 1) / (appState.rates[base] || 1);
+  const currentRate =
+    (appState.rates[target] || 1) / (appState.rates[base] || 1);
   uiManager.updateConversionDisplay(currentRate, base, target);
   uiManager.updateVolatilityDisplay(base, target);
 
@@ -111,39 +133,71 @@ function refreshDashboard() {
   if (typeof refreshPortfolio === "function") refreshPortfolio();
 }
 
+function editHolding(id) {
+  const holding = StorageManager.getPortfolio().find((h) => h.id === id);
+
+  if (!holding) return;
+
+  editingHoldingId = id;
+
+  document.getElementById("hold-currency").value = holding.currency;
+  document.getElementById("hold-amount").value = holding.amount;
+  document.getElementById("hold-rate").value = holding.purchaseRate;
+
+  document.getElementById("add-holding-btn").textContent = "Update Asset";
+}
+
 /**
  * App initialization orchestrator
  */
 async function initializeApplication() {
   // --- NEW PORTFOLIO BINDINGS ---
-  window.refreshPortfolio = function() {
-    const analytics = PortfolioManager.getAnalytics(appState.rates, appState.fromCurrency);
+  window.refreshPortfolio = function () {
+    const analytics = PortfolioManager.getAnalytics(
+      appState.rates,
+      appState.fromCurrency,
+    );
     const valEl = document.getElementById("portfolio-total-value");
     const roiEl = document.getElementById("portfolio-total-roi");
-    
-    if (valEl) valEl.textContent = `$${analytics.currentValue.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+    const holdingsEl = document.getElementById("portfolio-total-holdings");
+    const bestPerformerEl = document.getElementById("portfolio-best-performer");
+
+    if (valEl)
+      valEl.textContent = `$${analytics.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
     if (roiEl) {
-      const roiSign = analytics.roi >= 0 ? '+' : '';
+      const roiSign = analytics.roi >= 0 ? "+" : "";
       roiEl.textContent = `${roiSign}${analytics.roi.toFixed(2)}%`;
     }
-    
+
+    if (holdingsEl) {
+      holdingsEl.textContent = analytics.totalHoldings;
+    }
+
+    if (bestPerformerEl) {
+      if (analytics.bestPerformer) {
+        bestPerformerEl.textContent = `${analytics.bestPerformer} (${analytics.bestROI.toFixed(2)}%)`;
+      } else {
+        bestPerformerEl.textContent = "-";
+      }
+    }
+
     const tbody = document.getElementById("portfolio-table-body");
     if (tbody) {
       tbody.innerHTML = "";
-      StorageManager.getPortfolio().forEach(h => {
-        
+      StorageManager.getPortfolio().forEach((h) => {
         // Calculate live individual metrics
         const rateBase = appState.rates[appState.fromCurrency] || 1;
         const rateTarget = appState.rates[h.currency] || 1;
         const liveRate = rateTarget / rateBase;
-        
+
         const invested = h.amount / h.purchaseRate;
         const currentVal = h.amount / liveRate;
         const indvRoi = ((currentVal - invested) / invested) * 100;
-        
-        const roiColor = indvRoi >= 0 ? 'var(--color-success)' : 'var(--color-danger)';
-        const roiSign = indvRoi >= 0 ? '+' : '';
-        
+
+        const roiColor =
+          indvRoi >= 0 ? "var(--color-success)" : "var(--color-danger)";
+        const roiSign = indvRoi >= 0 ? "+" : "";
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>
@@ -154,14 +208,23 @@ async function initializeApplication() {
               <span style="font-weight: 600; font-size: 1.05rem;">${h.currency}</span>
             </div>
           </td>
-          <td style="font-family: var(--font-display); font-size: 1.05rem;">${h.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+          <td style="font-family: var(--font-display); font-size: 1.05rem;">${h.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
           <td style="color: var(--text-secondary);">${h.purchaseRate.toFixed(4)}</td>
-          <td style="font-family: var(--font-display); font-weight: bold; font-size: 1.05rem;">$${currentVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+          <td style="font-family: var(--font-display); font-weight: bold; font-size: 1.05rem;">$${currentVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
           <td style="color: ${roiColor}; font-weight: bold; font-size: 1.05rem;">${roiSign}${indvRoi.toFixed(2)}%</td>
           <td style="text-align: right;">
+          <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
+          <button
+              onclick="editHolding(${h.id})"
+              class="btn-secondary"
+              style="margin-right:8px;"
+          >
+                  Edit
+           </button>
             <button onclick="PortfolioManager.deleteHolding(${h.id}); refreshPortfolio();" class="btn-secondary" style="padding: 6px 14px; color: var(--color-danger); border-color: rgba(239, 68, 68, 0.15); background: rgba(239, 68, 68, 0.05);">
               Close
             </button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
@@ -170,24 +233,63 @@ async function initializeApplication() {
   };
 
   const addHoldingBtn = document.getElementById("add-holding-btn");
-  if (addHoldingBtn) {
-    addHoldingBtn.addEventListener("click", () => {
-      const cur = document.getElementById("hold-currency").value;
-      const amt = document.getElementById("hold-amount").value;
-      const rate = document.getElementById("hold-rate").value;
-      
-      if(cur && amt && rate) {
-        PortfolioManager.addHolding(cur, amt, rate);
-        if (uiManager) uiManager.showToast("Holding added to portfolio!", "success");
-        refreshPortfolio();
-        
-        // Clear inputs
-        document.getElementById("hold-currency").value = "";
-        document.getElementById("hold-amount").value = "";
-        document.getElementById("hold-rate").value = "";
+  addHoldingBtn.addEventListener("click", () => {
+    const cur = document
+      .getElementById("hold-currency")
+      .value.trim()
+      .toUpperCase();
+
+    const amt = parseFloat(document.getElementById("hold-amount").value);
+    const rate = parseFloat(document.getElementById("hold-rate").value);
+
+    // Validate currency
+    if (!CurrencyAPI.CURRENCY_DETAILS[cur]) {
+      uiManager.showToast("Please enter a valid currency code.", "warning");
+      return;
+    }
+
+    // Validate amount
+    if (isNaN(amt) || amt <= 0) {
+      uiManager.showToast("Amount must be greater than 0.", "warning");
+      return;
+    }
+
+    // Validate purchase rate
+    if (isNaN(rate) || rate <= 0) {
+      uiManager.showToast("Purchase rate must be greater than 0.", "warning");
+      return;
+    }
+
+    if (editingHoldingId === null) {
+      console.log("Adding new holding:");
+      const result = PortfolioManager.addHolding(cur, amt, rate);
+
+      if (!result.success) {
+        uiManager.showToast(result.message, "warning");
+        return;
       }
-    });
-  }
+
+      uiManager.showToast("Holding added to portfolio!", "success");
+    } else {
+      PortfolioManager.updateHolding(editingHoldingId, {
+        currency: cur,
+        amount: amt,
+        purchaseRate: rate,
+      });
+
+      uiManager.showToast("Holding updated successfully!", "success");
+
+      editingHoldingId = null;
+      document.getElementById("add-holding-btn").textContent =
+        "Add Asset to Portfolio";
+    }
+
+    refreshPortfolio();
+
+    document.getElementById("hold-currency").value = "";
+    document.getElementById("hold-amount").value = "";
+    document.getElementById("hold-rate").value = "";
+  });
 
   // Bind inputs value changed
   const fromAmountInput = document.getElementById("converter-amount-from");
@@ -197,9 +299,9 @@ async function initializeApplication() {
 
   // Bind Chart Timeframes selector
   const timeframeButtons = document.querySelectorAll(".timeframe-btn");
-  timeframeButtons.forEach(btn => {
+  timeframeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      timeframeButtons.forEach(b => b.classList.remove("active"));
+      timeframeButtons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       appState.activeTimeframe = btn.getAttribute("data-period");
       drawChart();
@@ -213,24 +315,42 @@ async function initializeApplication() {
       drawChart();
       // Render comparison table base update
       uiManager.renderComparisonTable(appState.fromCurrency, appState.rates);
-      
-      const currentRate = (appState.rates[appState.toCurrency] || 1) / (appState.rates[appState.fromCurrency] || 1);
-      uiManager.updateConversionDisplay(currentRate, appState.fromCurrency, appState.toCurrency);
-      uiManager.updateVolatilityDisplay(appState.fromCurrency, appState.toCurrency);
-      
+
+      const currentRate =
+        (appState.rates[appState.toCurrency] || 1) /
+        (appState.rates[appState.fromCurrency] || 1);
+      uiManager.updateConversionDisplay(
+        currentRate,
+        appState.fromCurrency,
+        appState.toCurrency,
+      );
+      uiManager.updateVolatilityDisplay(
+        appState.fromCurrency,
+        appState.toCurrency,
+      );
+
       // Update portfolio on base currency change
       refreshPortfolio();
     },
-    
+
     onSwap: () => {
       handleCalculation();
       drawChart();
       uiManager.renderComparisonTable(appState.fromCurrency, appState.rates);
-      
-      const currentRate = (appState.rates[appState.toCurrency] || 1) / (appState.rates[appState.fromCurrency] || 1);
-      uiManager.updateConversionDisplay(currentRate, appState.fromCurrency, appState.toCurrency);
-      uiManager.updateVolatilityDisplay(appState.fromCurrency, appState.toCurrency);
-      
+
+      const currentRate =
+        (appState.rates[appState.toCurrency] || 1) /
+        (appState.rates[appState.fromCurrency] || 1);
+      uiManager.updateConversionDisplay(
+        currentRate,
+        appState.fromCurrency,
+        appState.toCurrency,
+      );
+      uiManager.updateVolatilityDisplay(
+        appState.fromCurrency,
+        appState.toCurrency,
+      );
+
       // Update portfolio on base currency change
       refreshPortfolio();
     },
@@ -243,8 +363,12 @@ async function initializeApplication() {
     onConvertSubmit: () => {
       const amount = parseFloat(fromAmountInput.value);
       const toAmountInput = document.getElementById("converter-amount-to");
+
       if (isNaN(amount) || amount <= 0 || !toAmountInput.value) {
-        uiManager.showToast("Please enter a valid amount to convert", "warning");
+        uiManager.showToast(
+          "Please enter a valid amount to convert",
+          "warning",
+        );
         return;
       }
 
@@ -254,11 +378,14 @@ async function initializeApplication() {
         appState.toCurrency,
         amount,
         result,
-        appState.rates
+        appState.rates,
       );
 
       refreshDashboard();
-      uiManager.showToast(`Converted ${amount} ${appState.fromCurrency} to ${appState.toCurrency} successfully!`, "success");
+      uiManager.showToast(
+        `Converted ${amount} ${appState.fromCurrency} to ${appState.toCurrency} successfully!`,
+        "success",
+      );
     },
 
     onExportCSV: () => {
@@ -280,7 +407,7 @@ async function initializeApplication() {
     onFavoriteToggle: () => {
       const pair = `${appState.fromCurrency}/${appState.toCurrency}`;
       StorageManager.toggleFavoritePair(pair);
-      
+
       refreshDashboard();
       drawChart();
       uiManager.showToast("Updated favorites configuration", "success");
@@ -291,7 +418,7 @@ async function initializeApplication() {
         // Redraw canvas with small timeout to allow window styles layout
         setTimeout(() => drawChart(), 50);
       }
-    }
+    },
   });
 
   // Run UI setups
@@ -300,7 +427,7 @@ async function initializeApplication() {
   // Load live rate data from API
   try {
     appState.rates = await CurrencyAPI.fetchExchangeRates();
-    
+
     // Set status
     const statusLabel = document.getElementById("connection-status");
     if (statusLabel) {
@@ -308,7 +435,10 @@ async function initializeApplication() {
     }
   } catch (error) {
     console.error("Rates fetch error:", error);
-    uiManager.showToast("Network offline. Loaded offline rates fallback.", "warning");
+    uiManager.showToast(
+      "Network offline. Loaded offline rates fallback.",
+      "warning",
+    );
   }
 
   // Set default currency values
@@ -335,13 +465,16 @@ async function initializeApplication() {
 }
 
 // ---- Service Worker Registration (PWA) ------------------------------------
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').then((reg) => {
-      console.log('[PWA] Service Worker registered:', reg.scope);
-    }).catch((err) => {
-      console.warn('[PWA] Service Worker registration failed:', err);
-    });
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("sw.js")
+      .then((reg) => {
+        console.log("[PWA] Service Worker registered:", reg.scope);
+      })
+      .catch((err) => {
+        console.warn("[PWA] Service Worker registration failed:", err);
+      });
   });
 }
 
