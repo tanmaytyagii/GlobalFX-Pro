@@ -1,73 +1,67 @@
 /**
- * GlobalFX Pro - Animations Stylesheet
- * Custom keyframes and transitions for a premium, highly interactive dashboard experience.
+ * GlobalFX Pro — Motion
+ *
+ * Motion is used to explain change, never to decorate. Durations stay under
+ * 320ms, easing is consistent, and every animation is suppressed under
+ * prefers-reduced-motion (see the media query at the end of style.css).
  */
 
-/* Fade-In Effects */
+/* --- View transitions ---------------------------------------------------- */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 200ms var(--ease) forwards;
 }
 
-/* Slide-In Options list */
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.slide-down {
-  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Skeleton Pulse Loading Animation */
+/* --- Loading ------------------------------------------------------------- */
 @keyframes skeletonPulse {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-.skeleton {
-  background: linear-gradient(90deg, 
-    var(--border-color) 25%, 
-    rgba(255, 255, 255, 0.05) 37%, 
-    var(--border-color) 63%
-  );
-  background-size: 400% 100%;
-  animation: skeletonPulse 1.4s ease infinite;
-  border-radius: var(--radius-sm);
-  color: transparent !important;
-  pointer-events: none;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-body.light-theme .skeleton {
-  background: linear-gradient(90deg, 
-    rgba(0, 0, 0, 0.05) 25%, 
-    rgba(0, 0, 0, 0.02) 37%, 
-    rgba(0, 0, 0, 0.05) 63%
-  );
-  background-size: 400% 100%;
+.spinning {
+  animation: spin 0.8s linear infinite;
 }
 
-/* Button Ripple & Elevation Lifts */
+/* --- Toasts -------------------------------------------------------------- */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to   { opacity: 0; transform: translateX(12px) scale(0.98); }
+}
+
+.toast-in  { animation: toastIn 200ms var(--ease) forwards; }
+.toast-out { animation: toastOut 160ms var(--ease) forwards; }
+
+/* --- Value change flash --------------------------------------------------
+   A brief tint when a rate updates, so a refresh is perceptible without the
+   number visibly jumping. */
+@keyframes flashUp {
+  0%   { background-color: var(--pos-soft); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flashDown {
+  0%   { background-color: var(--neg-soft); }
+  100% { background-color: transparent; }
+}
+
+.flash-up   { animation: flashUp 900ms ease-out; }
+.flash-down { animation: flashDown 900ms ease-out; }
+
+/* --- Ripple --------------------------------------------------------------
+   Retained for primary actions only; the effect is subtle and short. */
 .ripple {
   position: relative;
   overflow: hidden;
@@ -76,65 +70,13 @@ body.light-theme .skeleton {
 .ripple-effect {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
+  background: currentColor;
+  opacity: 0.18;
   transform: scale(0);
-  animation: rippleAnimation 0.6s linear;
+  animation: rippleOut 520ms var(--ease);
   pointer-events: none;
 }
 
-@keyframes rippleAnimation {
-  to {
-    transform: scale(4);
-    opacity: 0;
-  }
-}
-
-.card-lift {
-  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-}
-
-.card-lift:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
-}
-
-/* Toast Message Notifications Animation */
-@keyframes toastSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes toastSlideOut {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(12px) scale(0.95);
-  }
-}
-
-.toast-in {
-  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.toast-out {
-  animation: toastSlideOut 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Spin animation for refresh operations */
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.spinning {
-  animation: spin 0.8s linear infinite;
+@keyframes rippleOut {
+  to { transform: scale(3.2); opacity: 0; }
 }

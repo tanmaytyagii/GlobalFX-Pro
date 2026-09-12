@@ -1,153 +1,384 @@
 /**
- * GlobalFX Pro - Responsive Layout Rules
- * CSS Grid and Flexbox rules for mobile, tablet, laptop, desktop, and ultra-wide screens.
+ * GlobalFX Pro — Responsive Rules
+ *
+ * The shell is one CSS grid, so each breakpoint re-slots the same DOM rather
+ * than duplicating it. The navigation element in particular becomes a bottom
+ * bar on small screens while remaining the single set of .nav-tab nodes the
+ * application manages.
+ *
+ * Breakpoints: 1440 · 1200 · 1024 (nav flip) · 768 · 560
  */
 
 /* ==========================================================================
-   Breakpoints Rules
+   Large desktop
    ========================================================================== */
+@media (min-width: 1680px) {
+  :root {
+    --content-max: 1560px;
+    --sidebar-w: 248px;
+  }
+}
 
-/* Laptop / Desktop (Max: 1200px) */
+/* ==========================================================================
+   Small desktop / laptop
+   ========================================================================== */
 @media (max-width: 1200px) {
+  :root {
+    --sidebar-w: 208px;
+  }
+
   .main-content {
-    padding: 20px;
+    padding: var(--sp-5) var(--sp-6) var(--sp-8);
   }
-}
 
-/* Tablet (Max: 900px) */
-@media (max-width: 900px) {
-  .metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-  
   .converter-container {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
-  .insights-grid {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-  
-  .chart-info-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .timeframe-controls {
-    width: 100%;
-    justify-content: space-between;
-  }
-  
-  .timeframe-btn {
-    flex: 1;
-    text-align: center;
+    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
   }
 }
 
-/* Mobile (Max: 600px) */
-@media (max-width: 600px) {
-  .app-header {
-    padding: 12px 16px;
-    flex-direction: column;
-    gap: 12px;
-    align-items: center;
-    text-align: center;
-  }
-  
-  .logo-container {
-    flex-direction: column;
-    gap: 4px;
-  }
-  
-  .header-actions {
-    width: 100%;
-    justify-content: space-between;
+/* ==========================================================================
+   Tablet — navigation moves to a bottom bar
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--header-h) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "header"
+      "main"
+      "nav";
   }
 
+  /* Bottom navigation: fixed, thumb-reachable, evenly divided */
   .navigation-bar {
-    margin: 10px auto 0 auto;
-    padding: 0 16px;
-    gap: 4px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    z-index: 50;
+    height: auto;
+    flex-direction: row;
+    gap: 0;
+    padding: var(--sp-1) var(--sp-2);
+    padding-bottom: max(var(--sp-1), env(safe-area-inset-bottom));
+    border-right: none;
+    border-top: 1px solid var(--border);
+    overflow: visible;
+  }
+
+  .nav-section-label,
+  .nav-footer {
+    display: none;
   }
 
   .nav-tab {
-    padding: 10px 14px;
-    font-size: 0.85rem;
-  }
-  
-  .main-content {
-    padding: 16px;
-  }
-
-  .metrics-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .glass-card {
-    padding: 16px;
-  }
-
-  .input-group-row {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .swap-btn-container {
-    margin: 4px 0;
-  }
-
-  .currency-select {
-    padding: 14px 16px 14px 48px;
-  }
-  
-  .chart-wrapper {
-    height: 280px;
-  }
-
-  /* Table responsiveness overrides */
-  .fx-table th:nth-child(3),
-  .fx-table td:nth-child(3),
-  .fx-table th:nth-child(4),
-  .fx-table td:nth-child(4) {
-    display: none; /* Hide 24h & 7d changes on small screens, click to open detail */
-  }
-
-  .history-item {
+    flex: 1 1 0;
+    min-width: 0;
     flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    text-align: left;
+    justify-content: center;
+    gap: 3px;
+    padding: var(--sp-2) var(--sp-1);
+    min-height: 50px;
+    background: none;
+    text-align: center;
   }
 
-  .history-values {
-    text-align: left;
-    border-top: 1px solid var(--border-color);
-    padding-top: 8px;
+  .nav-tab:hover,
+  .nav-tab.active {
+    background: none;
   }
-  
-  .action-button-row {
+
+  /* Underline marker reads better than a side rule in a horizontal bar */
+  .nav-tab.active::before {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 2px;
+  }
+
+  .nav-icon {
+    width: 19px;
+    height: 19px;
+  }
+
+  .nav-label {
+    flex: none;
     width: 100%;
-    justify-content: space-between;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
-  
-  .action-button-row button {
-    flex: 1;
-    justify-content: center;
+
+  /* Badge floats over the icon in the compact bar */
+  .nav-badge {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    margin-left: 4px;
+    min-width: 15px;
+    height: 15px;
+    font-size: 0.5625rem;
+  }
+
+  .nav-badge[data-count="0"] {
+    display: none;
+  }
+
+  /* Clear the fixed bar so nothing is trapped underneath */
+  .main-content {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--sp-6));
+  }
+
+  .toast-region {
+    bottom: calc(64px + env(safe-area-inset-bottom) + var(--sp-3));
+  }
+
+  .converter-container {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .insights-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/* Ultra-Wide Screens (Min: 1800px) */
-@media (min-width: 1800px) {
-  .main-content {
-    max-width: 1600px;
+/* ==========================================================================
+   Tablet portrait
+   ========================================================================== */
+@media (max-width: 768px) {
+  :root {
+    --fs-display: 1.5rem;
+    --metric-lg: 1.625rem;
   }
-  
-  .navigation-bar {
-    max-width: 1600px;
+
+  .main-content {
+    padding: var(--sp-4) var(--sp-4);
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--sp-6));
+  }
+
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .movers-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-5);
+  }
+
+  .chart-info-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-3);
+  }
+
+  .timeframe-controls {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+  }
+
+  .timeframe-btn {
+    min-width: 0;
+  }
+
+  .trend-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .alert-pair-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pair-divider {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   Mobile
+   ========================================================================== */
+@media (max-width: 560px) {
+  :root {
+    --header-h: 52px;
+    --fs-display: 1.375rem;
+    --metric-lg: 1.5rem;
+    --metric-md: 1.25rem;
+  }
+
+  .main-content {
+    padding: var(--sp-4) var(--sp-3);
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--sp-5));
+  }
+
+  .app-header {
+    padding: 0 var(--sp-3);
+  }
+
+  /* The wordmark subtitle is redundant at this width */
+  .logo-text span {
+    display: none;
+  }
+
+  /* The connection status collapses to its dot so the wordmark keeps its room.
+     The label stays in the DOM for the live region, just visually hidden. */
+  .status-badge {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .status-badge #connection-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  /* In a column flex container the row flex-basis would become a 280px tall
+     gap, so the status line is reset to its natural height here. */
+  .permission-status {
+    flex: 0 0 auto;
+  }
+
+  .glass-card {
+    padding: var(--sp-4);
+  }
+
+  .metrics-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-2);
+  }
+
+  /* Currency selector drops below the amount so both stay legible */
+  .exchange-leg {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-2);
+  }
+
+  .exchange-leg .custom-select-container {
+    width: 100%;
+  }
+
+  .exchange-leg-label {
+    margin-bottom: 0;
+  }
+
+  .chart-wrapper {
+    height: 240px;
+  }
+
+  .portfolio-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .holding-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Ledger rows stack into cards; the figures keep their right alignment */
+  .history-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--sp-2) var(--sp-3);
+    padding: var(--sp-3) 0;
+  }
+
+  .history-meta {
+    grid-row: 1;
+  }
+
+  .history-badge {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .history-values {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  /* Alert rows stack, controls span the full width for comfortable taps */
+  .alert-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--sp-2) var(--sp-3);
+  }
+
+  .alert-actions {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--border);
+  }
+
+  .alert-actions .btn-secondary,
+  .alert-actions .btn-danger {
+    flex: 1;
+  }
+
+  .permission-block {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .permission-block .btn-secondary {
+    width: 100%;
+  }
+
+  .action-button-row {
+    width: 100%;
+  }
+
+  .action-button-row .btn-secondary {
+    flex: 1;
+  }
+
+  .vol-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-2);
+    justify-items: start;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+  }
+
+  .toast-region {
+    left: var(--sp-3);
+    right: var(--sp-3);
+  }
+
+  .app-toast {
+    max-width: none;
+  }
+
+  /* Comparison table: drop the lowest-priority column rather than the data
+     that gives the table its purpose. Horizontal scroll keeps the rest. */
+  .fx-table th:nth-child(2),
+  .fx-table td:nth-child(2) {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   Short viewports — keep the chart usable in landscape
+   ========================================================================== */
+@media (max-height: 560px) and (max-width: 1024px) {
+  .chart-wrapper {
+    height: 200px;
   }
 }

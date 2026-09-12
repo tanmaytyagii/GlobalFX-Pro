@@ -1,11 +1,17 @@
 /**
  * GlobalFX Pro - Main App Orchestrator
- * Wires up modules, schedules network rate syncs, and binds system events.
+ *
+ * Wires modules together, owns the application state, schedules data refreshes
+ * and drives the alert engine. All market values flow from CurrencyAPI through
+ * AnalyticsManager before reaching the UI — this file never computes a metric
+ * or invents a value of its own.
  */
 
 // Application State
 const appState = {
   rates: {},
+  rateMeta: { state: CurrencyAPI.STATE.LOADING, fetchedAt: null },
+  dataset: null,
   fromCurrency: "USD",
   toCurrency: "EUR",
   activeTimeframe: "30D",
@@ -16,6 +22,16 @@ const appState = {
 // Global reference for statistics transitions
 let prevStats = { totalConversions: 0, averageAmount: 0 };
 let uiManager;
+
+/** How often live rates are re-polled while the app is open. */
+const RATE_POLL_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * Current spot rate for the selected pair, or null when unavailable.
+ */
+function currentPairRate() {
+  return AlertsManager.resolveRate(appState.rates, appState.fromCurrency, appState.toCurrency);
+}
 
 /**
  * Recalculates conversion estimate based on amount input
@@ -32,243 +48,522 @@ function handleCalculation() {
   }
 
   const result = CurrencyConverter.convert(amount, appState.fromCurrency, appState.toCurrency, appState.rates);
-  toAmountInput.value = result.toFixed(2);
+  toAmountInput.value = result > 0 ? result.toFixed(2) : "";
   appState.lastCalculatedAmount = result;
 }
 
 /**
- * Wires up details for charts rendering
+ * Renders the historical chart and timeframe statistics for the selected pair.
+ *
+ * Every number here comes from the shared ECB dataset. If the pair has no
+ * historical series the chart shows an explicit unavailable state rather than
+ * an empty or placeholder plot.
  */
 function drawChart() {
   const base = appState.fromCurrency;
   const target = appState.toCurrency;
-  
-  const rateBase = appState.rates[base] || 1;
-  const rateTarget = appState.rates[target] || 1;
-  const currentRate = rateTarget / rateBase;
+  const pairLabel = `${base}/${target}`;
 
-  // Generate historical data
-  const chartData = CurrencyAPI.generateHistoricalRates(base, target, appState.activeTimeframe, currentRate);
-  
-  // Render Chart
-  ChartManager.renderHistoricalChart("fx-history-chart", chartData, appState.isDarkMode);
-
-  // Update visual text titles
   const chartTitle = document.getElementById("chart-currency-pair");
   if (chartTitle) chartTitle.textContent = `${base} / ${target} Trend`;
 
-  const chartRateVal = document.getElementById("chart-rate-value");
-  if (chartRateVal) {
-    const targetSymbol = CurrencyAPI.CURRENCY_DETAILS[target]?.symbol || "";
-    chartRateVal.textContent = `${targetSymbol}${currentRate.toFixed(4)}`;
+  // Dataset still loading
+  if (!appState.dataset) {
+    ChartManager.renderState("fx-history-chart", CurrencyAPI.STATE.LOADING, "Loading ECB historical data…");
+    setChartHeadline(null, null);
+    uiManager.renderTrendAnalysisPanel({}, base, target);
+    return;
   }
 
-  const chartChangePct = document.getElementById("chart-change-percentage");
-  if (chartChangePct) {
-    const sign = chartData.percentChange >= 0 ? "+" : "";
-    chartChangePct.textContent = `${sign}${chartData.percentChange.toFixed(2)}%`;
-    chartChangePct.className = "chart-change-pct " + (chartData.percentChange >= 0 ? "trend-up" : "trend-down");
+  const series = CurrencyAPI.getPairSeries(appState.dataset, base, target);
+
+  if (!series.available) {
+    const message = series.reason === "same-currency"
+      ? "Select two different currencies to see a trend."
+      : appState.dataset.state === CurrencyAPI.STATE.ERROR
+        ? "Historical data could not be loaded. Check your connection and try again."
+        : `Historical data unavailable for ${pairLabel}. The ECB reference series does not cover this pair.`;
+
+    ChartManager.renderState("fx-history-chart", appState.dataset.state, message);
+    setChartHeadline(null, null);
+    uiManager.renderTrendAnalysisPanel({}, base, target);
+    return;
   }
 
-  // Update timeframe trends
-  const trends = CurrencyAPI.getExchangeRateTrends(base, target, currentRate);
-  uiManager.renderTrendAnalysisPanel(trends, base, target);
+  const windowSeries = CurrencyAPI.sliceSeries(series, appState.activeTimeframe);
+  const performance = CurrencyAPI.getPerformance(series, appState.activeTimeframe);
+
+  ChartManager.renderHistoricalChart("fx-history-chart", {
+    dates: windowSeries.dates,
+    values: windowSeries.values,
+    percentChange: performance.available ? performance.percentChange : 0,
+    timeframe: appState.activeTimeframe,
+    pairLabel
+  }, appState.isDarkMode);
+
+  // Headline shows the latest observed close, and the change over the window
+  setChartHeadline(series.values[series.values.length - 1], performance.available ? performance.percentChange : null);
+
+  // Timeframe statistics, each computed independently from real observations
+  const performances = {};
+  for (const timeframe of ["1D", "7D", "30D", "1Y"]) {
+    const result = CurrencyAPI.getPerformance(series, timeframe);
+    performances[timeframe] = result.available ? result.percentChange : null;
+  }
+  uiManager.renderTrendAnalysisPanel(performances, base, target);
 }
 
 /**
- * Updates full dashboard modules
+ * Updates the rate + change figures above the chart.
+ */
+function setChartHeadline(rate, percentChange) {
+  const rateEl = document.getElementById("chart-rate-value");
+  if (rateEl) {
+    rateEl.textContent = Number.isFinite(rate)
+      ? `${CurrencyAPI.CURRENCY_DETAILS[appState.toCurrency]?.symbol || ""}${rate.toFixed(UIManager.precisionFor(rate))}`
+      : "—";
+  }
+
+  const changeEl = document.getElementById("chart-change-percentage");
+  if (changeEl) {
+    if (!Number.isFinite(percentChange)) {
+      changeEl.textContent = "—";
+      changeEl.className = "chart-change-pct";
+      return;
+    }
+    const sign = percentChange >= 0 ? "+" : "";
+    changeEl.textContent = `${sign}${percentChange.toFixed(2)}%`;
+    changeEl.className = "chart-change-pct " + (percentChange >= 0 ? "trend-up" : "trend-down");
+  }
+}
+
+/**
+ * Updates every dashboard module from current state.
  */
 function refreshDashboard() {
   const history = StorageManager.getConversionHistory();
   const favorites = StorageManager.getFavoritePairs();
-  
-  // 1. Calculate and update dashboard summaries
-  const stats = AnalyticsManager.calculateAnalyticsSummary(appState.rates, history, favorites);
+
+  // 1. User-level statistics from the local transaction log
+  const stats = AnalyticsManager.calculateAnalyticsSummary(appState.rates, history, favorites, appState.dataset);
   uiManager.renderAnalyticsDashboard(stats, prevStats);
-  
-  // Cache stats for transition animations
+
   prevStats.totalConversions = stats.totalConversions;
   prevStats.averageAmount = stats.averageConversionAmountUsd;
 
-  // 2. Render recent list
+  // 2. Transaction log
   uiManager.renderConversionHistory(history);
 
-  // 3. Render cross comparison table
-  uiManager.renderComparisonTable(appState.fromCurrency, appState.rates);
+  // 3. Live conversion summary
+  uiManager.updateConversionDisplay(
+    currentPairRate(), appState.fromCurrency, appState.toCurrency, appState.rateMeta
+  );
 
-  // 4. Update live conversion display
-  const base = appState.fromCurrency;
-  const target = appState.toCurrency;
-  const currentRate = (appState.rates[target] || 1) / (appState.rates[base] || 1);
-  uiManager.updateConversionDisplay(currentRate, base, target);
-  uiManager.updateVolatilityDisplay(base, target);
+  // 4. Market analytics, all derived from the shared historical dataset
+  refreshMarketAnalytics();
 
-  // 5. Market Insights
-  const marketOverview = AnalyticsManager.getMarketOverview(appState.rates);
-  uiManager.renderMarketOverview(marketOverview);
+  // 5. Portfolio valuation
+  refreshPortfolio();
 
-  // 6. Update Portfolio if active
-  if (typeof refreshPortfolio === "function") refreshPortfolio();
+  // 6. Alerts reflect the latest rates
+  refreshAlerts();
 }
 
 /**
- * App initialization orchestrator
+ * Re-renders everything that depends on the historical dataset.
  */
-async function initializeApplication() {
-  // --- NEW PORTFOLIO BINDINGS ---
-  window.refreshPortfolio = function() {
-    const analytics = PortfolioManager.getAnalytics(appState.rates, appState.fromCurrency);
-    const valEl = document.getElementById("portfolio-total-value");
-    const roiEl = document.getElementById("portfolio-total-roi");
-    
-    if (valEl) valEl.textContent = `$${analytics.currentValue.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-    if (roiEl) {
-      const roiSign = analytics.roi >= 0 ? '+' : '';
-      roiEl.textContent = `${roiSign}${analytics.roi.toFixed(2)}%`;
-    }
-    
-    const tbody = document.getElementById("portfolio-table-body");
-    if (tbody) {
-      tbody.innerHTML = "";
-      StorageManager.getPortfolio().forEach(h => {
-        
-        // Calculate live individual metrics
-        const rateBase = appState.rates[appState.fromCurrency] || 1;
-        const rateTarget = appState.rates[h.currency] || 1;
-        const liveRate = rateTarget / rateBase;
-        
-        const invested = h.amount / h.purchaseRate;
-        const currentVal = h.amount / liveRate;
-        const indvRoi = ((currentVal - invested) / invested) * 100;
-        
-        const roiColor = indvRoi >= 0 ? 'var(--color-success)' : 'var(--color-danger)';
-        const roiSign = indvRoi >= 0 ? '+' : '';
-        
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>
-            <div style="display:flex; align-items:center; gap:12px;">
-              <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem; color: var(--text-primary);">
-                ${h.currency}
-              </div>
-              <span style="font-weight: 600; font-size: 1.05rem;">${h.currency}</span>
-            </div>
-          </td>
-          <td style="font-family: var(--font-display); font-size: 1.05rem;">${h.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-          <td style="color: var(--text-secondary);">${h.purchaseRate.toFixed(4)}</td>
-          <td style="font-family: var(--font-display); font-weight: bold; font-size: 1.05rem;">$${currentVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-          <td style="color: ${roiColor}; font-weight: bold; font-size: 1.05rem;">${roiSign}${indvRoi.toFixed(2)}%</td>
-          <td style="text-align: right;">
-            <button onclick="PortfolioManager.deleteHolding(${h.id}); refreshPortfolio();" class="btn-secondary" style="padding: 6px 14px; color: var(--color-danger); border-color: rgba(239, 68, 68, 0.15); background: rgba(239, 68, 68, 0.05);">
-              Close
-            </button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-  };
+function refreshMarketAnalytics() {
+  const base = appState.fromCurrency;
 
+  uiManager.updateVolatilityDisplay(
+    AnalyticsManager.getVolatilityProfile(appState.dataset, base, appState.toCurrency),
+    base, appState.toCurrency
+  );
+
+  uiManager.renderMovers(AnalyticsManager.getTopMovers(appState.dataset, base, "1D"));
+  uiManager.renderVolatilityLeaderboard(AnalyticsManager.getVolatilityLeaderboard(appState.dataset, base, 3), base);
+  uiManager.renderMarketOverview(AnalyticsManager.getMarketOverview(appState.dataset, base));
+  uiManager.renderComparisonTable(AnalyticsManager.getComparisonRows(appState.dataset, base, appState.rates));
+}
+
+/**
+ * Re-values portfolio holdings against current rates.
+ *
+ * Values are expressed in the selected base currency, so the displayed symbol
+ * follows that currency rather than assuming US dollars.
+ */
+function refreshPortfolio() {
+  const base = appState.fromCurrency;
+  const symbol = CurrencyAPI.CURRENCY_DETAILS[base]?.symbol || "";
+  const analytics = PortfolioManager.getAnalytics(appState.rates, base);
+
+  const baseLabel = document.getElementById("portfolio-base-label");
+  if (baseLabel) baseLabel.textContent = base;
+
+  const valueEl = document.getElementById("portfolio-total-value");
+  const roiEl = document.getElementById("portfolio-total-roi");
+
+  if (valueEl) {
+    valueEl.textContent = analytics.available
+      ? `${symbol}${analytics.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : "—";
+  }
+
+  if (roiEl) {
+    if (analytics.available) {
+      const sign = analytics.roi >= 0 ? "+" : "";
+      roiEl.textContent = `${sign}${analytics.roi.toFixed(2)}%`;
+      roiEl.style.color = analytics.roi >= 0 ? "var(--color-success)" : "var(--color-danger)";
+    } else {
+      roiEl.textContent = "—";
+      roiEl.style.color = "var(--text-muted)";
+    }
+  }
+
+  renderPortfolioTable(base, symbol);
+}
+
+/**
+ * Renders the holdings table. Built with safe DOM APIs so stored holding data
+ * cannot be interpreted as markup.
+ */
+function renderPortfolioTable(base, symbol) {
+  const tbody = document.getElementById("portfolio-table-body");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  const holdings = StorageManager.getPortfolio();
+
+  if (holdings.length === 0) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 6;
+    cell.appendChild(UIManager.emptyState(
+      "portfolio",
+      "No holdings recorded",
+      "Add a currency holding below to track its value against live rates."
+    ));
+    row.appendChild(cell);
+    tbody.appendChild(row);
+    return;
+  }
+
+  holdings.forEach(holding => {
+    const liveRate = AlertsManager.resolveRate(appState.rates, base, holding.currency);
+    const invested = holding.amount / holding.purchaseRate;
+    const currentValue = liveRate === null ? null : holding.amount / liveRate;
+    const roi = currentValue === null ? null : ((currentValue - invested) / invested) * 100;
+
+    const row = document.createElement("tr");
+
+    // Asset
+    const assetCell = document.createElement("td");
+    const assetWrap = UIManager.el("div", "portfolio-asset-cell");
+    assetWrap.appendChild(UIManager.el("div", "portfolio-asset-badge", holding.currency));
+    assetWrap.appendChild(UIManager.el("span", "portfolio-asset-code", holding.currency));
+    assetCell.appendChild(assetWrap);
+    row.appendChild(assetCell);
+
+    // Amount held
+    row.appendChild(UIManager.el("td", "table-rate-cell num-col",
+      holding.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })));
+
+    // Purchase rate
+    row.appendChild(UIManager.el("td", "table-muted-cell num-col", holding.purchaseRate.toFixed(4)));
+
+    // Live value in the base currency
+    row.appendChild(UIManager.el("td", "table-rate-cell num-col",
+      currentValue === null
+        ? "—"
+        : `${symbol}${currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`));
+
+    // ROI
+    const roiCell = UIManager.el("td", "num-col", roi === null ? "—" : `${roi >= 0 ? "+" : ""}${roi.toFixed(2)}%`);
+    roiCell.style.fontWeight = "bold";
+    roiCell.style.color = roi === null
+      ? "var(--text-muted)"
+      : roi >= 0 ? "var(--color-success)" : "var(--color-danger)";
+    row.appendChild(roiCell);
+
+    // Manage
+    const actionCell = UIManager.el("td", "portfolio-action-cell num-col");
+    const closeBtn = UIManager.el("button", "btn btn-danger btn-sm btn-icon");
+    closeBtn.type = "button";
+    closeBtn.appendChild(UIManager.icon("trash"));
+    closeBtn.setAttribute("aria-label", `Remove ${holding.currency} holding`);
+    closeBtn.addEventListener("click", () => {
+      PortfolioManager.deleteHolding(holding.id);
+      refreshPortfolio();
+      uiManager.showToast("Holding removed from portfolio", "success");
+    });
+    actionCell.appendChild(closeBtn);
+    row.appendChild(actionCell);
+
+    tbody.appendChild(row);
+  });
+}
+
+// ============================================================================
+// Rate alerts
+// ============================================================================
+
+function refreshAlerts() {
+  uiManager.renderAlerts(AlertsManager.getAlerts(), appState.rates);
+  uiManager.updateAlertRatePreview();
+}
+
+/**
+ * Reports what the browser will actually allow, without overpromising.
+ */
+function notificationStatus() {
+  if (typeof Notification === "undefined") return "unsupported";
+  return Notification.permission; // "granted" | "denied" | "default"
+}
+
+/**
+ * Requests notification permission. Only ever called from a deliberate user
+ * action, and never re-prompted once the user has decided.
+ */
+async function requestNotificationPermission() {
+  if (typeof Notification === "undefined") {
+    uiManager.showToast("This browser does not support notifications.", "warning");
+    return;
+  }
+
+  if (Notification.permission !== "default") {
+    uiManager.renderNotificationStatus(Notification.permission);
+    return;
+  }
+
+  try {
+    const result = await Notification.requestPermission();
+    uiManager.renderNotificationStatus(result);
+    uiManager.showToast(
+      result === "granted" ? "Notifications enabled for rate alerts." : "Notifications were not enabled.",
+      result === "granted" ? "success" : "warning"
+    );
+  } catch (error) {
+    console.warn("[Alerts] Notification permission request failed:", error);
+    uiManager.renderNotificationStatus(notificationStatus());
+  }
+}
+
+/**
+ * Delivers a fired alert. Always surfaces in-app; additionally raises a system
+ * notification when permission has been granted.
+ */
+async function deliverAlert(alert, rate) {
+  const { title, body } = AlertsManager.formatNotification(alert, rate);
+
+  uiManager.showToast(body.split("\n").join(" "), "warning", title);
+
+  if (notificationStatus() !== "granted") return;
+
+  try {
+    // Prefer the service worker registration: on Android, page-constructed
+    // Notifications are not permitted.
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        await registration.showNotification(title, {
+          body,
+          tag: `globalfx-${alert.id}`,
+          badge: "https://flagcdn.com/w40/eu.png",
+          icon: `https://flagcdn.com/w80/${CurrencyAPI.CURRENCY_DETAILS[alert.quote]?.flag || "un"}.png`,
+          data: { pair: `${alert.base}/${alert.quote}` }
+        });
+        return;
+      }
+    }
+    new Notification(title, { body, tag: `globalfx-${alert.id}` });
+  } catch (error) {
+    console.warn("[Alerts] Unable to display notification:", error);
+  }
+}
+
+/**
+ * Evaluates all alerts against the current rates and delivers any that fired.
+ */
+async function evaluateAlerts() {
+  if (!appState.rates || Object.keys(appState.rates).length === 0) return;
+
+  const triggered = AlertsManager.evaluate(appState.rates);
+  for (const { alert, rate } of triggered) {
+    await deliverAlert(alert, rate);
+  }
+
+  if (triggered.length > 0) refreshAlerts();
+}
+
+// ============================================================================
+// Data loading
+// ============================================================================
+
+/**
+ * Refreshes live rates and re-renders everything that depends on them.
+ */
+async function syncLiveRates() {
+  const result = await CurrencyAPI.fetchExchangeRates();
+
+  appState.rates = result.rates;
+  appState.rateMeta = { state: result.state, fetchedAt: result.fetchedAt };
+
+  uiManager.updateDataSourceIndicator(appState.rateMeta, appState.dataset || { state: CurrencyAPI.STATE.LOADING, dates: [] });
+
+  if (result.state === CurrencyAPI.STATE.ERROR) {
+    uiManager.showToast("Live rates unavailable and no cached rates stored.", "error");
+  }
+
+  handleCalculation();
+  refreshDashboard();
+  await evaluateAlerts();
+}
+
+/**
+ * Loads the shared historical dataset and re-renders all market analytics.
+ */
+async function loadHistoricalData() {
+  ChartManager.renderState("fx-history-chart", CurrencyAPI.STATE.LOADING, "Loading ECB historical data…");
+  uiManager.renderMarketSkeletons();
+
+  const dataset = await CurrencyAPI.fetchHistoricalDataset();
+  appState.dataset = dataset;
+
+  uiManager.clearMarketSkeletons();
+  uiManager.updateDataSourceIndicator(appState.rateMeta, dataset);
+
+  if (dataset.state === CurrencyAPI.STATE.ERROR) {
+    uiManager.showToast("Historical market data unavailable. Analytics are disabled.", "warning");
+  } else if (dataset.state === CurrencyAPI.STATE.CACHED) {
+    uiManager.showToast("Offline — showing previously downloaded ECB data.", "warning");
+  }
+
+  refreshMarketAnalytics();
+  drawChart();
+
+  const stats = AnalyticsManager.calculateAnalyticsSummary(
+    appState.rates, StorageManager.getConversionHistory(), StorageManager.getFavoritePairs(), dataset
+  );
+  uiManager.renderAnalyticsDashboard(stats, prevStats);
+}
+
+/**
+ * Re-renders the parts of the UI that depend on the selected pair.
+ */
+function onPairChanged() {
+  handleCalculation();
+  drawChart();
+  refreshMarketAnalytics();
+  uiManager.updateConversionDisplay(
+    currentPairRate(), appState.fromCurrency, appState.toCurrency, appState.rateMeta
+  );
+  refreshPortfolio();
+}
+
+// ============================================================================
+// Bootstrap
+// ============================================================================
+
+async function initializeApplication() {
+  // --- Portfolio form -------------------------------------------------------
   const addHoldingBtn = document.getElementById("add-holding-btn");
   if (addHoldingBtn) {
     addHoldingBtn.addEventListener("click", () => {
-      const cur = document.getElementById("hold-currency").value;
-      const amt = document.getElementById("hold-amount").value;
-      const rate = document.getElementById("hold-rate").value;
-      
-      if(cur && amt && rate) {
-        PortfolioManager.addHolding(cur, amt, rate);
-        if (uiManager) uiManager.showToast("Holding added to portfolio!", "success");
-        refreshPortfolio();
-        
-        // Clear inputs
-        document.getElementById("hold-currency").value = "";
-        document.getElementById("hold-amount").value = "";
-        document.getElementById("hold-rate").value = "";
+      const currencyInput = document.getElementById("hold-currency");
+      const amountInput = document.getElementById("hold-amount");
+      const rateInput = document.getElementById("hold-rate");
+
+      const currency = String(currencyInput?.value || "").toUpperCase().trim();
+      const amount = Number(amountInput?.value);
+      const rate = Number(rateInput?.value);
+
+      if (!Object.prototype.hasOwnProperty.call(CurrencyAPI.CURRENCY_DETAILS, currency)) {
+        uiManager.showToast("Enter a supported currency code (for example EUR).", "warning");
+        return;
       }
+      if (!Number.isFinite(amount) || amount <= 0) {
+        uiManager.showToast("Enter an amount greater than zero.", "warning");
+        return;
+      }
+      if (!Number.isFinite(rate) || rate <= 0) {
+        uiManager.showToast("Enter a purchase rate greater than zero.", "warning");
+        return;
+      }
+
+      PortfolioManager.addHolding(currency, amount, rate);
+      uiManager.showToast("Holding added to portfolio", "success");
+      refreshPortfolio();
+
+      currencyInput.value = "";
+      amountInput.value = "";
+      rateInput.value = "";
     });
   }
 
-  // Bind inputs value changed
+  // --- Converter input ------------------------------------------------------
   const fromAmountInput = document.getElementById("converter-amount-from");
   if (fromAmountInput) {
     fromAmountInput.addEventListener("input", handleCalculation);
   }
 
-  // Bind Chart Timeframes selector
+  // --- Chart timeframes -----------------------------------------------------
   const timeframeButtons = document.querySelectorAll(".timeframe-btn");
   timeframeButtons.forEach(btn => {
     btn.addEventListener("click", () => {
-      timeframeButtons.forEach(b => b.classList.remove("active"));
+      timeframeButtons.forEach(b => {
+        b.classList.remove("active");
+        b.setAttribute("aria-pressed", "false");
+      });
       btn.classList.add("active");
+      btn.setAttribute("aria-pressed", "true");
       appState.activeTimeframe = btn.getAttribute("data-period");
       drawChart();
     });
   });
 
-  // Create UI Controller Instance
+  // --- UI controller --------------------------------------------------------
   uiManager = new UIManager(appState, {
-    onCurrencyChange: (type, code) => {
-      handleCalculation();
-      drawChart();
-      // Render comparison table base update
-      uiManager.renderComparisonTable(appState.fromCurrency, appState.rates);
-      
-      const currentRate = (appState.rates[appState.toCurrency] || 1) / (appState.rates[appState.fromCurrency] || 1);
-      uiManager.updateConversionDisplay(currentRate, appState.fromCurrency, appState.toCurrency);
-      uiManager.updateVolatilityDisplay(appState.fromCurrency, appState.toCurrency);
-      
-      // Update portfolio on base currency change
-      refreshPortfolio();
-    },
-    
-    onSwap: () => {
-      handleCalculation();
-      drawChart();
-      uiManager.renderComparisonTable(appState.fromCurrency, appState.rates);
-      
-      const currentRate = (appState.rates[appState.toCurrency] || 1) / (appState.rates[appState.fromCurrency] || 1);
-      uiManager.updateConversionDisplay(currentRate, appState.fromCurrency, appState.toCurrency);
-      uiManager.updateVolatilityDisplay(appState.fromCurrency, appState.toCurrency);
-      
-      // Update portfolio on base currency change
-      refreshPortfolio();
-    },
+    onCurrencyChange: () => onPairChanged(),
+    onSwap: () => onPairChanged(),
 
     onThemeChange: (isDark) => {
       appState.isDarkMode = isDark;
-      drawChart(); // Redraw chart grids
+      drawChart(); // Redraw chart grids for the new theme
     },
 
     onConvertSubmit: () => {
       const amount = parseFloat(fromAmountInput.value);
       const toAmountInput = document.getElementById("converter-amount-to");
+
       if (isNaN(amount) || amount <= 0 || !toAmountInput.value) {
         uiManager.showToast("Please enter a valid amount to convert", "warning");
         return;
       }
 
-      const result = parseFloat(toAmountInput.value);
       CurrencyConverter.commitTransaction(
-        appState.fromCurrency,
-        appState.toCurrency,
-        amount,
-        result,
-        appState.rates
+        appState.fromCurrency, appState.toCurrency, amount, parseFloat(toAmountInput.value), appState.rates
       );
 
       refreshDashboard();
-      uiManager.showToast(`Converted ${amount} ${appState.fromCurrency} to ${appState.toCurrency} successfully!`, "success");
+      uiManager.showToast(
+        `Converted ${amount} ${appState.fromCurrency} to ${appState.toCurrency} successfully!`, "success"
+      );
     },
 
     onExportCSV: () => {
-      const history = StorageManager.getConversionHistory();
-      const exportRes = ExportManager.exportToCSV(history);
-      if (exportRes && !exportRes.success) {
-        uiManager.showToast(exportRes.message, "warning");
-      } else {
-        uiManager.showToast("Conversion history exported to CSV", "success");
-      }
+      const result = ExportManager.exportToCSV(StorageManager.getConversionHistory());
+      uiManager.showToast(
+        result.success ? "Conversion history exported to CSV" : result.message,
+        result.success ? "success" : "warning"
+      );
+    },
+
+    onExportJSON: () => {
+      const result = ExportManager.exportToJSON(StorageManager.getConversionHistory());
+      uiManager.showToast(
+        result.success ? "Conversion history exported to JSON" : result.message,
+        result.success ? "success" : "warning"
+      );
     },
 
     onClearHistory: () => {
@@ -278,60 +573,86 @@ async function initializeApplication() {
     },
 
     onFavoriteToggle: () => {
-      const pair = `${appState.fromCurrency}/${appState.toCurrency}`;
-      StorageManager.toggleFavoritePair(pair);
-      
+      StorageManager.toggleFavoritePair(`${appState.fromCurrency}/${appState.toCurrency}`);
       refreshDashboard();
       drawChart();
       uiManager.showToast("Updated favorites configuration", "success");
     },
 
     onViewChange: (view) => {
-      if (view === "dashboard" || view === "analytics") {
-        // Redraw canvas with small timeout to allow window styles layout
-        setTimeout(() => drawChart(), 50);
+      if (view === "dashboard") {
+        // Canvas needs a layout pass before it can size correctly
+        setTimeout(() => drawChart(), 60);
       }
-    }
+      if (view === "alerts") refreshAlerts();
+
+      // Views are swapped by CSS, so move the reading position to the top
+      window.scrollTo({ top: 0, behavior: "auto" });
+    },
+
+    onCreateAlert: ({ base, quote, condition, target }) => {
+      const rate = AlertsManager.resolveRate(appState.rates, base, quote);
+      const result = AlertsManager.createAlert(base, quote, condition, target, rate);
+
+      if (!result.success) {
+        uiManager.showAlertFormMessage(result.error, "error");
+        return;
+      }
+
+      uiManager.showAlertFormMessage("");
+      uiManager.closeAlertModal();
+      refreshAlerts();
+
+      const { base: b, quote: q, condition: c, target: t } = result.alert;
+      uiManager.showToast(
+        `You will be notified when ${b}/${q} crosses ${c} ${t.toFixed(AlertsManager.precisionFor(t))}.`,
+        "success",
+        "Alert created"
+      );
+
+      // Ask for notification permission only after deliberate intent
+      if (notificationStatus() === "default") requestNotificationPermission();
+    },
+
+    onDeleteAlert: (id) => {
+      AlertsManager.deleteAlert(id);
+      refreshAlerts();
+      uiManager.showToast("Alert deleted", "success");
+    },
+
+    onToggleAlert: (id, enabled) => {
+      const alert = AlertsManager.getAlerts().find(a => a.id === id);
+      const rate = alert ? AlertsManager.resolveRate(appState.rates, alert.base, alert.quote) : null;
+      AlertsManager.setEnabled(id, enabled, rate);
+      refreshAlerts();
+      uiManager.showToast(enabled ? "Alert resumed" : "Alert paused", "success");
+    },
+
+    onRequestNotifications: () => requestNotificationPermission()
   });
 
-  // Run UI setups
   uiManager.init();
+  uiManager.renderNotificationStatus(notificationStatus());
 
-  // Load live rate data from API
-  try {
-    appState.rates = await CurrencyAPI.fetchExchangeRates();
-    
-    // Set status
-    const statusLabel = document.getElementById("connection-status");
-    if (statusLabel) {
-      statusLabel.textContent = "Live Market Rates Connected";
-    }
-  } catch (error) {
-    console.error("Rates fetch error:", error);
-    uiManager.showToast("Network offline. Loaded offline rates fallback.", "warning");
-  }
+  // Restore the selected pair in the converter controls
+  uiManager.selectors.from?.setValue(appState.fromCurrency);
+  uiManager.selectors.to?.setValue(appState.toCurrency);
 
-  // Set default currency values
-  uiManager.selectors.from.setValue(appState.fromCurrency);
-  uiManager.selectors.to.setValue(appState.toCurrency);
+  if (fromAmountInput) fromAmountInput.value = "1000";
 
-  // Set initial calculation values
-  if (fromAmountInput) {
-    fromAmountInput.value = "1000";
-    handleCalculation();
-  }
+  // Live rates first: the converter is the primary interaction and depends on
+  // them. Historical analytics load in parallel and fill in when ready.
+  await syncLiveRates();
+  await loadHistoricalData();
 
-  // Render lists and components
-  const movers = CurrencyAPI.getTopMovers(appState.rates);
-  uiManager.renderMovers(movers);
-  refreshDashboard();
-  drawChart();
+  // Re-poll live rates while the app is open
+  setInterval(syncLiveRates, RATE_POLL_INTERVAL_MS);
 
-  // Start rates pooling (sync rates every 5 minutes)
-  setInterval(async () => {
-    appState.rates = await CurrencyAPI.fetchExchangeRates();
-    refreshDashboard();
-  }, 300000);
+  // Re-check when the user returns to the tab, so a rate that moved while the
+  // app was hidden is picked up promptly.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") syncLiveRates();
+  });
 }
 
 // ---- Service Worker Registration (PWA) ------------------------------------

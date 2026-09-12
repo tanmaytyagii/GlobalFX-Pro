@@ -2,463 +2,680 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
   <!-- SEO Tags -->
-  <title>GlobalFX Pro - Real-Time Global Currency Exchange & Analytics Platform</title>
-  <meta name="description" content="A professional real-time currency converter, historical rate visualizer, volatility assessor, and top mover tracker. Secure data engine with local storage backup and CSV export.">
+  <title>GlobalFX Pro — Currency Exchange & Market Analytics</title>
+  <meta name="description" content="Real currency conversion, ECB historical analytics, realized volatility and rate alerts. Live and cached market data is always labelled as such.">
   <meta name="author" content="Tanmay Tyagi">
-  
+
   <!-- PWA Tags -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#6366f1">
+  <meta name="theme-color" content="#0A0C10" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="GlobalFX">
-  <link rel="apple-touch-icon" href="https://flagcdn.com/h192/us.png">
+  <link rel="apple-touch-icon" href="icon.svg">
   <meta name="application-name" content="GlobalFX Pro">
   <meta name="mobile-web-app-capable" content="yes">
-  
-  <!-- Favicon styling -->
-  <link rel="icon" type="image/png" href="https://flagcdn.com/w40/us.png">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
 
   <!-- Core and Component styling -->
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/animations.css">
   <link rel="stylesheet" href="css/responsive.css">
-  
+
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-  <!-- ==========================================================================
-       Header Block
-       ========================================================================== -->
-  <header class="app-header">
-    <div class="logo-container">
-      <div class="logo-icon">⇄</div>
-      <div class="logo-text">
-        GlobalFX Pro
-        <span>Global Currency & Analytics</span>
-      </div>
-    </div>
-    
-    <div class="header-actions">
-      <div class="status-badge" id="status-badge-container">
-        <span class="status-dot"></span>
-        <span id="connection-status">Connecting...</span>
-      </div>
-      <button class="theme-toggle-btn" id="theme-toggle-trigger" aria-label="Toggle light/dark mode" title="Switch Theme">
-        🌙
-      </button>
-    </div>
-  </header>
+  <a class="skip-link" href="#main">Skip to content</a>
 
   <!-- ==========================================================================
-       Tab Navigation
+       Icon sprite — one consistent 24px outline set, referenced via <use>
        ========================================================================== -->
-  <nav class="navigation-bar">
-    <a href="#" class="nav-tab active" data-view="dashboard" id="nav-dashboard">
-      📊 Dashboard
-    </a>
-    <a href="#" class="nav-tab" data-view="portfolio" id="nav-portfolio">
-      💼 Portfolio
-    </a>
-    <a href="#" class="nav-tab" data-view="converter" id="nav-converter">
-      💱 Converter Logs
-    </a>
-    <a href="#" class="nav-tab" data-view="analytics" id="nav-analytics">
-      📈 Market Insights
-    </a>
-  </nav>
+  <svg class="icon-sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <g id="i-base" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></g>
+    </defs>
+    <symbol id="i-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/>
+      <rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>
+    </symbol>
+    <symbol id="i-portfolio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+    </symbol>
+    <symbol id="i-ledger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4a2 2 0 0 1 2-2h9l5 5v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 2v6h6"/>
+      <path d="M8 13h8M8 17h5"/>
+    </symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </symbol>
+    <symbol id="i-markets" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 17l6-6 4 4 7-7"/><path d="M15 8h5v5"/>
+    </symbol>
+    <symbol id="i-exchange" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 8h15l-4-4"/><path d="M20 16H5l4 4"/>
+    </symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 4v16l-3-3"/><path d="M17 20V4l3 3"/>
+    </symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+    </symbol>
+    <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/>
+    </symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>
+    </symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 5v14M5 12h14"/>
+    </symbol>
+    <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 6L6 18M6 6l12 12"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>
+    </symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <path d="M12 9v4M12 17h.01"/>
+    </symbol>
+    <symbol id="i-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/>
+    </symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>
+    </symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+    </symbol>
+    <symbol id="i-offline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.6 8.4"/><path d="M2 2l20 20"/><path d="M9 19H6.5a4.5 4.5 0 0 1-1.4-8.78"/>
+    </symbol>
+    <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 19V5M5 12l7-7 7 7"/>
+    </symbol>
+    <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 5v14M19 12l-7 7-7-7"/>
+    </symbol>
+  </svg>
 
-  <!-- ==========================================================================
-       Main View Controller
-       ========================================================================== -->
-  <main class="main-content">
-    
+  <div class="app-shell">
+
     <!-- ==========================================================================
-         View 1: Dashboard
+         Header
          ========================================================================== -->
-    <section class="view-section active" id="dashboard-section">
-      
-      <!-- Metrics Card Grid -->
-      <div class="metrics-grid">
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Total Conversions</span>
-          <span class="metric-value" id="card-total-conversions">0</span>
-          <span class="metric-trend trend-up">📈 Local History</span>
-        </div>
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Currencies Supported</span>
-          <span class="metric-value" id="card-currencies-supported">0</span>
-          <span class="metric-trend" style="color:var(--color-primary);">⇄ Worldwide API</span>
-        </div>
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Most Active Currency</span>
-          <span class="metric-value" id="card-most-active-currency">N/A</span>
-          <span class="metric-trend trend-up" style="color:var(--text-muted);">★ Most Popular</span>
-        </div>
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Average Amount</span>
-          <span class="metric-value" id="card-avg-amount">$0.00</span>
-          <span class="metric-trend" style="color:var(--color-primary);">✦ Scaled to USD</span>
-        </div>
+    <header class="app-header">
+      <div class="logo-container">
+        <span class="logo-icon" aria-hidden="true"><svg><use href="#i-exchange"/></svg></span>
+        <span class="logo-text">
+          GlobalFX Pro
+          <span>Currency &amp; Market Analytics</span>
+        </span>
       </div>
 
-      <!-- Quick Convert & Historical Chart Grid -->
-      <div class="converter-container">
-        
-        <!-- Converter Block -->
-        <div class="glass-card converter-card">
-          <div class="card-header">
-            <div>
-              <h2 class="card-title">Exchange Currencies</h2>
-              <p class="card-subtitle">Real-time currency converter module</p>
-            </div>
-            <button class="favorite-pair-btn" id="favorite-pair-trigger" title="Save currency pair to favorites">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-              </svg>
-              <span>Add to Favorites</span>
-            </button>
-          </div>
-          
-          <div class="input-group-row">
-            <div class="converter-input-wrapper">
-              <label for="converter-amount-from" class="input-label">Amount</label>
-              <input type="number" id="converter-amount-from" class="currency-input" placeholder="0.00" value="1000" min="0">
-            </div>
-            <div id="from-currency-selector">
-              <!-- Searchable selector rendered here -->
-            </div>
-          </div>
-
-          <div class="swap-btn-container">
-            <button id="swap-currencies-btn" class="swap-button" aria-label="Swap from and to currencies" title="Swap Currencies">
-              <svg viewBox="0 0 24 24">
-                <path d="M19 14l4 4-4 4v-3H3v-2h16v-3M5 10V7h16V5H5V2L1 6l4 4z"/>
-              </svg>
-            </button>
-          </div>
-
-          <div class="input-group-row">
-            <div class="converter-input-wrapper" style="opacity: 0.85;">
-              <label for="converter-amount-to" class="input-label">Converted Estimate</label>
-              <input type="number" id="converter-amount-to" class="currency-input" placeholder="0.00" readonly>
-            </div>
-            <div id="to-currency-selector">
-              <!-- Searchable selector rendered here -->
-            </div>
-          </div>
-
-          <div id="exchange-rate-details" style="font-size: 0.9rem; color: var(--text-secondary); text-align: center; margin: 5px 0;">
-            Calculating exchange rates...
-          </div>
-
-          <button id="convert-btn-trigger" class="convert-button">
-            Convert & Save Transaction
-          </button>
-
-          <!-- Volatility Pill -->
-          <div id="converter-volatility-box" style="margin-top: 10px;"></div>
+      <div class="header-actions">
+        <div class="status-badge" id="status-badge-container" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="connection-status">Connecting…</span>
         </div>
-
-        <!-- Historical Rate Chart Block -->
-        <div class="glass-card chart-panel-card">
-          <div class="chart-info-header">
-            <div>
-              <h2 class="card-title" id="chart-currency-pair">USD / EUR Trend</h2>
-              <p class="card-subtitle">Interactive market analysis and rates tracker</p>
-            </div>
-            
-            <div class="timeframe-controls" role="group" aria-label="Chart Timeframe selector">
-              <button class="timeframe-btn" data-period="24H">24H</button>
-              <button class="timeframe-btn" data-period="7D">7D</button>
-              <button class="timeframe-btn active" data-period="30D">30D</button>
-              <button class="timeframe-btn" data-period="90D">90D</button>
-              <button class="timeframe-btn" data-period="1Y">1Y</button>
-            </div>
-          </div>
-
-          <div class="chart-current-stat">
-            <div class="chart-rate-val" id="chart-rate-value">0.9240</div>
-            <div class="chart-change-pct trend-up" id="chart-change-percentage">+0.00%</div>
-          </div>
-
-          <div class="chart-wrapper">
-            <canvas id="fx-history-chart"></canvas>
-          </div>
-
-          <!-- Trend Analysis Module (24H, 7D, 30D, 1Y) -->
-          <div id="trend-analysis-panel" style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;"></div>
-        </div>
+        <button class="theme-toggle-btn" id="theme-toggle-trigger" aria-label="Switch colour theme" title="Switch theme">
+          <svg class="icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
+          <svg class="icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+        </button>
       </div>
+    </header>
 
-      <!-- Volatility Analysis & Movers Dashboard -->
-      <div class="insights-grid">
-        
-        <!-- Top Currency Movers -->
+    <!-- ==========================================================================
+         Navigation — vertical rail on desktop, bottom bar on small screens
+         ========================================================================== -->
+    <nav class="navigation-bar" aria-label="Primary">
+      <span class="nav-section-label">Workspace</span>
+
+      <a href="#" class="nav-tab active" data-view="dashboard" id="nav-dashboard" aria-current="page">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-dashboard"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="#" class="nav-tab" data-view="analytics" id="nav-analytics">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-markets"/></svg>
+        <span class="nav-label">Markets</span>
+      </a>
+      <a href="#" class="nav-tab" data-view="alerts" id="nav-alerts">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-bell"/></svg>
+        <span class="nav-label">Alerts</span>
+        <span class="nav-badge" id="alerts-active-count" data-count="0" aria-label="active alerts">0</span>
+      </a>
+      <a href="#" class="nav-tab" data-view="portfolio" id="nav-portfolio">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-portfolio"/></svg>
+        <span class="nav-label">Portfolio</span>
+      </a>
+      <a href="#" class="nav-tab" data-view="converter" id="nav-converter">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-ledger"/></svg>
+        <span class="nav-label">Activity</span>
+      </a>
+
+      <div class="nav-footer">
+        <strong>Data sources</strong>
+        Live rates · open.er-api<br>
+        Historical · ECB via Frankfurter
+      </div>
+    </nav>
+
+    <!-- ==========================================================================
+         Main
+         ========================================================================== -->
+    <main class="main-content" id="main">
+
+      <!-- ======================================================================
+           View 1: Dashboard
+           ====================================================================== -->
+      <section class="view-section active" id="dashboard-section" aria-labelledby="dashboard-title">
+
+        <div class="page-header">
+          <div>
+            <h1 class="page-title" id="dashboard-title">Global Markets</h1>
+            <p class="page-subtitle">Live exchange rates, historical performance and realized volatility, alongside your own conversion activity.</p>
+          </div>
+          <div class="page-meta">
+            <span class="meta-item">
+              <span class="meta-label">Historical source</span>
+              <span class="meta-value">ECB · Frankfurter</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Converter + chart -->
+        <div class="converter-container">
+
+          <!-- Converter -->
+          <div class="glass-card converter-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Convert</h2>
+                <p class="card-subtitle">Mid-market rate, no spread applied</p>
+              </div>
+              <button class="favorite-pair-btn" id="favorite-pair-trigger" title="Save this pair to favourites">
+                <svg aria-hidden="true"><use href="#i-star"/></svg>
+                <span>Add to Favourites</span>
+              </button>
+            </div>
+
+            <div class="exchange-block">
+              <div class="exchange-leg">
+                <label class="exchange-leg-label" for="converter-amount-from">You send</label>
+                <input type="number" id="converter-amount-from" class="exchange-amount" placeholder="0.00" value="1000" min="0" step="any" inputmode="decimal">
+                <div id="from-currency-selector"><!-- searchable selector --></div>
+              </div>
+
+              <div class="swap-btn-container">
+                <button id="swap-currencies-btn" class="swap-button" aria-label="Swap send and receive currencies" title="Swap currencies">
+                  <svg aria-hidden="true"><use href="#i-swap"/></svg>
+                </button>
+              </div>
+
+              <div class="exchange-leg exchange-leg-receive">
+                <label class="exchange-leg-label" for="converter-amount-to">You receive</label>
+                <input type="number" id="converter-amount-to" class="exchange-amount" placeholder="0.00" readonly tabindex="-1">
+                <div id="to-currency-selector"><!-- searchable selector --></div>
+              </div>
+            </div>
+
+            <div class="rate-summary" id="exchange-rate-details" aria-live="polite">
+              <span class="rate-line rate-line-muted">Loading exchange rate…</span>
+            </div>
+
+            <button id="convert-btn-trigger" class="convert-button ripple">Convert &amp; record transaction</button>
+
+            <div id="converter-volatility-box"></div>
+          </div>
+
+          <!-- Historical chart -->
+          <div class="glass-card chart-panel-card">
+            <div class="chart-info-header">
+              <div>
+                <h2 class="card-title" id="chart-currency-pair">USD / EUR</h2>
+                <p class="card-subtitle" id="market-data-source">Loading market data…</p>
+                <div class="chart-current-stat">
+                  <span class="chart-rate-val" id="chart-rate-value">—</span>
+                  <span class="chart-change-pct" id="chart-change-percentage">—</span>
+                </div>
+              </div>
+
+              <div class="timeframe-controls" role="group" aria-label="Chart timeframe">
+                <button class="timeframe-btn" data-period="7D" aria-pressed="false">7D</button>
+                <button class="timeframe-btn active" data-period="30D" aria-pressed="true">30D</button>
+                <button class="timeframe-btn" data-period="90D" aria-pressed="false">90D</button>
+                <button class="timeframe-btn" data-period="6M" aria-pressed="false">6M</button>
+                <button class="timeframe-btn" data-period="1Y" aria-pressed="false">1Y</button>
+              </div>
+            </div>
+
+            <div class="chart-wrapper">
+              <canvas id="fx-history-chart"></canvas>
+            </div>
+
+            <div id="trend-analysis-panel"></div>
+          </div>
+        </div>
+
+        <!-- Market movers & volatility -->
+        <div class="section-header">
+          <h2 class="section-title">Market activity</h2>
+        </div>
+
+        <div class="insights-grid">
+          <div class="glass-card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Top movers</h3>
+                <p class="card-subtitle" id="movers-as-of">Loading market data…</p>
+              </div>
+            </div>
+
+            <div class="movers-columns">
+              <div>
+                <div class="movers-heading gainers"><span class="dot" aria-hidden="true"></span> Gainers</div>
+                <div id="top-gainers-list" class="movers-list"></div>
+              </div>
+              <div>
+                <div class="movers-heading losers"><span class="dot" aria-hidden="true"></span> Losers</div>
+                <div id="top-losers-list" class="movers-list"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Realized volatility</h3>
+                <p class="card-subtitle">Widest observed movement against <strong id="volatility-base-label">USD</strong>, annualized from daily log returns</p>
+              </div>
+            </div>
+
+            <div class="volatility-list" id="volatility-leaderboard"></div>
+
+            <p class="metric-footnote">
+              <strong>Volatility is dispersion, not risk.</strong> It measures observed price movement only —
+              not sovereign, liquidity or macroeconomic risk. A managed currency can show very low volatility
+              while drifting a long way in one direction.
+            </p>
+          </div>
+        </div>
+
+        <!-- Personal activity -->
+        <div class="section-header">
+          <h2 class="section-title">Your activity</h2>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="glass-card metric-card card-lift">
+            <span class="metric-label">Total conversions</span>
+            <span class="metric-value" id="card-total-conversions">0</span>
+            <span class="metric-trend">Recorded locally</span>
+          </div>
+          <div class="glass-card metric-card card-lift">
+            <span class="metric-label">Average amount</span>
+            <span class="metric-value" id="card-avg-amount">$0.00</span>
+            <span class="metric-trend">Normalised to USD</span>
+          </div>
+          <div class="glass-card metric-card card-lift">
+            <span class="metric-label">Most active currency</span>
+            <span class="metric-value" id="card-most-active-currency">—</span>
+            <span class="metric-trend">Across your conversions</span>
+          </div>
+          <div class="glass-card metric-card card-lift">
+            <span class="metric-label">Currencies supported</span>
+            <span class="metric-value" id="card-currencies-supported">—</span>
+            <span class="metric-trend">Live conversion</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           View 2: Markets
+           ====================================================================== -->
+      <section class="view-section" id="analytics-section" aria-labelledby="analytics-title">
+
+        <div class="page-header">
+          <div>
+            <h1 class="page-title" id="analytics-title">Markets</h1>
+            <p class="page-subtitle">One year of European Central Bank reference rates, measured against your selected base currency.</p>
+          </div>
+          <div class="page-meta">
+            <span class="meta-item">
+              <span class="meta-label">Historical coverage</span>
+              <span class="meta-value" id="card-historical-coverage">—</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <h2 class="section-title">Market overview · 1 year</h2>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="glass-card metric-card card-lift">
+            <span class="metric-label">Strongest performer</span>
+            <span class="metric-value" id="market-strongest">—</span>
+            <span class="metric-trend" id="market-strongest-note">Loading…</span>
+          </div>
+          <div class="glass-card metric-card card-lift">
+            <span class="metric-label">Weakest performer</span>
+            <span class="metric-value" id="market-weakest">—</span>
+            <span class="metric-trend" id="market-weakest-note">Loading…</span>
+          </div>
+          <div class="glass-card metric-card card-lift">
+            <span class="metric-label">Most volatile</span>
+            <span class="metric-value" id="market-volatile">—</span>
+            <span class="metric-trend" id="market-volatile-note">Loading…</span>
+          </div>
+          <div class="glass-card metric-card card-lift">
+            <span class="metric-label">Steadiest</span>
+            <span class="metric-value" id="market-steadiest">—</span>
+            <span class="metric-trend" id="market-steadiest-note">Loading…</span>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <h2 class="section-title">Cross rates</h2>
+        </div>
+
         <div class="glass-card">
           <div class="card-header">
             <div>
-              <h3 class="card-title">Top Movers (24H)</h3>
-              <p class="card-subtitle">Highest gaining and losing currencies relative to USD</p>
+              <h2 class="card-title">Multi-currency comparison</h2>
+              <p class="card-subtitle">Major currencies against <strong id="comparison-base-label">USD</strong></p>
             </div>
           </div>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div>
-              <span class="input-label" style="display:block; margin-bottom: 8px; color: var(--color-success);">🟢 Top Gainers</span>
-              <div id="top-gainers-list" class="movers-list"></div>
-            </div>
-            <div>
-              <span class="input-label" style="display:block; margin-bottom: 8px; color: var(--color-danger);">🔴 Top Losers</span>
-              <div id="top-losers-list" class="movers-list"></div>
-            </div>
+
+          <div class="table-responsive">
+            <table class="fx-table">
+              <thead>
+                <tr>
+                  <th scope="col">Currency</th>
+                  <th scope="col" class="num-col">Rate</th>
+                  <th scope="col" class="num-col">1D</th>
+                  <th scope="col" class="num-col">7D</th>
+                </tr>
+              </thead>
+              <tbody id="comparison-table-body"></tbody>
+            </table>
+          </div>
+
+          <p class="metric-footnote">
+            Rates are live mid-market quotes. Changes are computed from ECB reference rates, which publish
+            once per business day — a “1D” change is session-over-session, not the last 24 hours.
+          </p>
+        </div>
+
+        <div class="section-header">
+          <h2 class="section-title">Your preferences</h2>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="glass-card metric-card card-lift">
+            <span class="metric-label">Favourite pair</span>
+            <span class="metric-value" id="card-favorite-pair">USD/EUR</span>
+            <span class="metric-trend">Saved locally</span>
+          </div>
+          <div class="glass-card metric-card card-lift">
+            <span class="metric-label">Refresh interval</span>
+            <span class="metric-value">5 min</span>
+            <span class="metric-trend">Live rate polling</span>
           </div>
         </div>
+      </section>
 
-        <!-- Curated Volatility Guide -->
-        <div class="glass-card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-title">Currency Risk & Volatility Analysis</h3>
-              <p class="card-subtitle">Understanding historical instability & volatility risk</p>
-            </div>
-          </div>
-          
-          <div class="volatility-list">
-            <div class="vol-card vol-low">
-              <div>
-                <strong style="display:block;">USD / INR Pair</strong>
-                <span class="card-subtitle">Stable trade pegging, strong capital inflows</span>
-              </div>
-              <span class="vol-risk-pill">🟢 Low Vol (Risk: 2/10)</span>
-            </div>
-            
-            <div class="vol-card vol-medium">
-              <div>
-                <strong style="display:block;">EUR / USD Pair</strong>
-                <span class="card-subtitle">Highly liquid pair, sensitive to inflation indexes</span>
-              </div>
-              <span class="vol-risk-pill">🟡 Med Vol (Risk: 5/10)</span>
-            </div>
+      <!-- ======================================================================
+           View 3: Rate Alerts
+           ====================================================================== -->
+      <section class="view-section" id="alerts-section" aria-labelledby="alerts-title">
 
-            <div class="vol-card vol-high">
-              <div>
-                <strong style="display:block;">GBP / JPY Pair</strong>
-                <span class="card-subtitle">High yield differential, carry-trades risk exposure</span>
-              </div>
-              <span class="vol-risk-pill">🔴 High Vol (Risk: 8/10)</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </section>
-
-    <!-- ==========================================================================
-         View 2: Portfolio Tracker (PREMIUM)
-         ========================================================================== -->
-    <section class="view-section" id="portfolio-section">
-      
-            <!-- Premium Metrics Grid -->
-      <div class="metrics-grid">
-        <div class="glass-card metric-card card-lift" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%); border-left: 4px solid var(--color-primary);">
-          <span class="metric-label">Total Value (Base)</span>
-          <span class="metric-value" id="portfolio-total-value" style="font-size: 2.2rem; color: var(--text-primary);">$0.00</span>
-          <span class="metric-trend" style="color:var(--color-primary);">✦ Live Valuation</span>
-        </div>
-        <div class="glass-card metric-card card-lift" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%); border-left: 4px solid var(--color-success);">
-          <span class="metric-label">Overall ROI</span>
-          <span class="metric-value" id="portfolio-total-roi" style="font-size: 2.2rem; color: var(--text-primary);">0.00%</span>
-          <span class="metric-trend trend-up">📈 Lifetime Performance</span>
-        </div>
-      </div>
-
-      <!-- Premium Add Holding Form -->
-      <div class="glass-card" style="margin-top: 24px;">
-        <div class="card-header" style="margin-bottom: 16px;">
+        <div class="page-header">
           <div>
-            <h2 class="card-title">Add New Asset</h2>
-            <p class="card-subtitle">Manually log a past currency purchase to track performance</p>
+            <h1 class="page-title" id="alerts-title">Rate Alerts</h1>
+            <p class="page-subtitle">Track exchange-rate thresholds and get notified when the market crosses them.</p>
           </div>
-        </div>
-        
-        <!-- Clean 3-column grid for inputs -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-          <div class="converter-input-wrapper">
-            <label class="input-label" style="margin-bottom: 8px; display: block;">Currency Code</label>
-            <input type="text" id="hold-currency" class="currency-input" placeholder="e.g. EUR, GBP, JPY" style="font-family: monospace; font-size: 1.1rem; text-transform: uppercase;">
-          </div>
-          <div class="converter-input-wrapper">
-            <label class="input-label" style="margin-bottom: 8px; display: block;">Amount Held</label>
-            <input type="number" id="hold-amount" class="currency-input" placeholder="1000.00">
-          </div>
-          <div class="converter-input-wrapper">
-            <label class="input-label" style="margin-bottom: 8px; display: block;">Purchase Rate</label>
-            <input type="number" step="0.0001" id="hold-rate" class="currency-input" placeholder="e.g. 1.0500">
-          </div>
-        </div>
-        
-        <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
-          <button id="add-holding-btn" class="convert-button" style="width: auto; padding: 12px 32px; display: inline-flex; align-items: center; gap: 8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            Add Asset to Portfolio
+          <button type="button" class="btn btn-primary" id="alert-open-modal-btn">
+            <svg aria-hidden="true"><use href="#i-plus"/></svg>
+            Create alert
           </button>
         </div>
-      </div>
 
-      <!-- Premium Holdings Data Table -->
-      <div class="glass-card" style="margin-top: 24px;">
-        <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
+        <div class="alerts-layout">
+          <div class="permission-block">
+            <p class="permission-status" id="alert-permission-status">
+              <svg aria-hidden="true"><use href="#i-info"/></svg>
+              <span>Enable notifications to be told when a rate crosses your target.</span>
+            </p>
+            <button type="button" class="btn btn-secondary" id="alert-permission-btn">Enable notifications</button>
+          </div>
+
+          <div class="glass-card">
+            <div class="card-header card-divider">
+              <div>
+                <h2 class="card-title">Active alerts</h2>
+                <p class="card-subtitle">An alert fires once per crossing, then re-arms when the rate moves back across your target</p>
+              </div>
+            </div>
+
+            <div id="alerts-list" class="alerts-list"></div>
+
+            <p class="metric-footnote">
+              <strong>How checking works:</strong> alerts are evaluated when the app loads, when you return to
+              the tab, and every 5 minutes while the app stays open. Browsers do not permit a web app to
+              guarantee monitoring once it is fully closed, so GlobalFX Pro does not claim continuous
+              background checking.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           View 4: Portfolio
+           ====================================================================== -->
+      <section class="view-section" id="portfolio-section" aria-labelledby="portfolio-title">
+
+        <div class="page-header">
           <div>
-            <h2 class="card-title">Active Holdings</h2>
-            <p class="card-subtitle">Real-time valuation of your virtual assets</p>
+            <h1 class="page-title" id="portfolio-title">Portfolio</h1>
+            <p class="page-subtitle">Manually recorded currency holdings, valued at live mid-market rates.</p>
+          </div>
+        </div>
+
+        <div class="portfolio-summary">
+          <div class="portfolio-summary-item">
+            <span class="metric-label">Total value (<span id="portfolio-base-label">USD</span>)</span>
+            <span class="metric-value metric-lg" id="portfolio-total-value">—</span>
+            <span class="metric-trend">Valued at current rates</span>
+          </div>
+          <div class="portfolio-summary-item">
+            <span class="metric-label">Overall return</span>
+            <span class="metric-value metric-lg" id="portfolio-total-roi">—</span>
+            <span class="metric-trend">Against your recorded purchase rates</span>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <h2 class="section-title">Holdings</h2>
+          <div class="action-button-row">
+            <button id="export-csv-btn" class="btn btn-secondary btn-sm" title="Export transaction history as CSV">
+              <svg aria-hidden="true"><use href="#i-download"/></svg> CSV
+            </button>
+            <button id="export-json-btn" class="btn btn-secondary btn-sm" title="Export transaction history as JSON">
+              <svg aria-hidden="true"><use href="#i-download"/></svg> JSON
+            </button>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="table-responsive">
+            <table class="fx-table">
+              <thead>
+                <tr>
+                  <th scope="col">Asset</th>
+                  <th scope="col" class="num-col">Amount</th>
+                  <th scope="col" class="num-col">Purchased at</th>
+                  <th scope="col" class="num-col">Value</th>
+                  <th scope="col" class="num-col">Return</th>
+                  <th scope="col" class="num-col"><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody id="portfolio-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <h2 class="section-title">Record a holding</h2>
+        </div>
+
+        <div class="glass-card">
+          <div class="holding-form-grid">
+            <div class="field">
+              <label class="input-label" for="hold-currency">Currency code</label>
+              <input type="text" id="hold-currency" class="currency-input" placeholder="EUR" autocomplete="off" spellcheck="false" maxlength="3" style="text-transform:uppercase">
+            </div>
+            <div class="field">
+              <label class="input-label" for="hold-amount">Amount held</label>
+              <input type="number" id="hold-amount" class="currency-input" placeholder="1000.00" step="any" min="0" inputmode="decimal">
+            </div>
+            <div class="field">
+              <label class="input-label" for="hold-rate">Purchase rate</label>
+              <input type="number" step="any" min="0" id="hold-rate" class="currency-input" placeholder="0.9200" inputmode="decimal">
+              <span class="field-hint">Units of the held currency per 1 base</span>
+            </div>
+            <button id="add-holding-btn" class="btn btn-primary">
+              <svg aria-hidden="true"><use href="#i-plus"/></svg>
+              Add holding
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           View 5: Activity
+           ====================================================================== -->
+      <section class="view-section" id="converter-section" aria-labelledby="activity-title">
+
+        <div class="page-header">
+          <div>
+            <h1 class="page-title" id="activity-title">Activity</h1>
+            <p class="page-subtitle">An auditable log of every conversion you have recorded, stored in this browser only.</p>
           </div>
           <div class="action-button-row">
-            <button id="export-csv-btn" class="btn-secondary" title="Export to CSV">📥 CSV</button>
-            <button id="export-json-btn" class="btn-secondary" title="Export to JSON">📥 JSON</button>
-          </div>
-        </div>
-        
-        <div class="table-responsive">
-          <table class="fx-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
-            <thead>
-              <tr>
-                <th style="padding-bottom: 16px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Asset</th>
-                <th style="padding-bottom: 16px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Amount</th>
-                <th style="padding-bottom: 16px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Purchased @</th>
-                <th style="padding-bottom: 16px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Live Value</th>
-                <th style="padding-bottom: 16px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Net ROI</th>
-                <th style="padding-bottom: 16px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; text-align:right;">Manage</th>
-              </tr>
-            </thead>
-            <tbody id="portfolio-table-body">
-              <!-- Rendered via JavaScript -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==========================================================================
-         View 3: Converter & History logs
-         ========================================================================== -->
-    <section class="view-section" id="converter-section">
-      <div class="glass-card" style="margin-bottom: 24px; max-width: 800px; margin-left: auto; margin-right: auto;">
-        <h2 class="card-title" style="margin-bottom: 16px;">Conversion Engine & Logs</h2>
-        <p class="card-subtitle" style="margin-bottom: 24px;">Your logged conversion history is kept fully secured in your local browser sandbox. You can download your data at any time.</p>
-        
-        <!-- Dynamic table actions -->
-        <div class="card-header" style="margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-          <h3 class="card-title">Audit History Log</h3>
-          <div class="action-button-row">
-            <button id="csv-export-btn-logs" class="btn-secondary" title="Export conversion history as CSV file">
-              📥 Export CSV
+            <button id="csv-export-btn-logs" class="btn btn-secondary btn-sm" title="Export history as CSV">
+              <svg aria-hidden="true"><use href="#i-download"/></svg> Export CSV
             </button>
-            <button id="clear-history-btn" class="btn-secondary" style="color:var(--color-danger); border-color:rgba(239, 68, 68, 0.2);" title="Wipe out local conversion log database">
-              🗑 Clear All
+            <button id="clear-history-btn" class="btn btn-danger btn-sm" title="Delete the local conversion log">
+              <svg aria-hidden="true"><use href="#i-trash"/></svg> Clear
             </button>
           </div>
         </div>
 
-        <div id="conversion-history-list" class="history-section">
-          <!-- Populated programmatically -->
+        <div class="glass-card">
+          <div id="conversion-history-list" class="history-section"></div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ==========================================================================
-         View 4: Analytics Detailed Board
-         ========================================================================== -->
-    <section class="view-section" id="analytics-section">
-      
-      <!-- Supplementary stats cards -->
-      <div class="metrics-grid">
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Favorite Pair</span>
-          <span class="metric-value" id="card-favorite-pair" style="font-size: 1.6rem;">USD/EUR</span>
-          <span class="metric-trend" style="color:var(--color-warning);">★ Saved Pair</span>
-        </div>
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Conversion Accuracy</span>
-          <span class="metric-value" id="card-accuracy">99.99%</span>
-          <span class="metric-trend trend-up">🟢 Active Feeds</span>
-        </div>
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Engine Updates</span>
-          <span class="metric-value" style="font-size: 1.5rem;">5 Minutes</span>
-          <span class="metric-trend" style="color:var(--color-primary);">⚡ Rate Limit Safe</span>
-        </div>
-      </div>
+      <!-- ==========================================================================
+           Footer
+           ========================================================================== -->
+      <footer class="app-footer">
+        <p><strong>GlobalFX Pro</strong> — currency exchange and market analytics. Built by Tanmay Tyagi · MIT License.</p>
+        <p>Live mid-market rates via <a href="https://open.er-api.com" target="_blank" rel="noopener">open.er-api.com</a>.
+           Historical analytics from European Central Bank reference rates via <a href="https://frankfurter.dev" target="_blank" rel="noopener">Frankfurter</a>.
+           No market data is simulated. Rates exclude any spread or fee and are not a dealing quote.</p>
+      </footer>
 
-      <!-- Market Overview Grid -->
-      <h2 style="font-size: 1.3rem; margin-bottom: 16px; margin-top: 16px; font-family: var(--font-display);">Market Overview</h2>
-      <div class="metrics-grid" style="margin-bottom: 24px;">
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Strongest Currency</span>
-          <span class="metric-value" id="market-strongest" style="font-size: 1.4rem;">USD</span>
-          <span class="metric-trend trend-up">🟢 Vs USD Base</span>
-        </div>
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Weakest Currency</span>
-          <span class="metric-value" id="market-weakest" style="font-size: 1.4rem;">N/A</span>
-          <span class="metric-trend trend-down">🔴 Vs USD Base</span>
-        </div>
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Most Traded Pair</span>
-          <span class="metric-value" id="market-traded" style="font-size: 1.4rem;">USD / EUR</span>
-          <span class="metric-trend" style="color:var(--color-primary);">⇄ Highest Volume</span>
-        </div>
-        <div class="glass-card metric-card card-lift">
-          <span class="metric-label">Most Volatile Asset</span>
-          <span class="metric-value" id="market-volatile" style="font-size: 1.4rem;">TRY</span>
-          <span class="metric-trend" style="color:var(--color-danger);">🔴 Volatility Index</span>
-        </div>
-      </div>
-
-      <!-- Multi-currency Comparison Dashboard Table -->
-      <div class="glass-card" style="margin-bottom: 24px;">
-        <div class="card-header">
-          <div>
-            <h2 class="card-title">Multi-Currency Comparison Dashboard</h2>
-            <p class="card-subtitle">Cross comparison of major currencies against base currency: <strong id="comparison-base-label">USD</strong></p>
-          </div>
-        </div>
-
-        <div class="table-responsive">
-          <table class="fx-table">
-            <thead>
-              <tr>
-                <th>Currency pair</th>
-                <th>Current Exchange Rate</th>
-                <th>Daily Change (24H)</th>
-                <th>Weekly Change (7D)</th>
-              </tr>
-            </thead>
-            <tbody id="comparison-table-body">
-              <!-- Rendered dynamically -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-    </section>
-
-  </main>
+    </main>
+  </div>
 
   <!-- ==========================================================================
-       Footer Layout
+       Create alert modal
        ========================================================================== -->
-  <footer class="app-footer">
-    <p><strong>GlobalFX Pro</strong> &bull; Real-Time Global Currency Exchange & Analytics Platform</p>
-    <p>Developed with passion by <strong>Tanmay Tyagi</strong> &bull; License: <strong>MIT License</strong></p>
-    <p style="font-size: 0.75rem; margin-top: 8px;">Rates sourced securely via free endpoints. Historical variations simulated for high-fidelity presentation.</p>
-  </footer>
+  <div class="modal-backdrop" id="alert-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="alert-modal-title">Create rate alert</h2>
+          <p class="card-subtitle">You will be notified once, when the rate crosses your target.</p>
+        </div>
+        <button type="button" class="modal-close" id="alert-modal-close" aria-label="Close dialog">
+          <svg aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+      </div>
+
+      <form id="alert-create-form" novalidate>
+        <div class="modal-body">
+          <div class="alert-form-grid">
+
+            <div class="alert-pair-fields">
+              <div class="field">
+                <span class="input-label" id="alert-base-label">Base</span>
+                <div id="alert-base-selector" aria-labelledby="alert-base-label"></div>
+              </div>
+              <span class="pair-divider" aria-hidden="true">/</span>
+              <div class="field">
+                <span class="input-label" id="alert-quote-label">Quote</span>
+                <div id="alert-quote-selector" aria-labelledby="alert-quote-label"></div>
+              </div>
+            </div>
+
+            <fieldset class="field" id="alert-condition">
+              <legend class="input-label">Trigger when the rate goes</legend>
+              <div class="segmented">
+                <input type="radio" name="alert-condition-choice" id="alert-cond-above" value="above" checked>
+                <label for="alert-cond-above" class="seg-above">
+                  <svg aria-hidden="true"><use href="#i-up"/></svg> Above
+                </label>
+                <input type="radio" name="alert-condition-choice" id="alert-cond-below" value="below">
+                <label for="alert-cond-below" class="seg-below">
+                  <svg aria-hidden="true"><use href="#i-down"/></svg> Below
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="field">
+              <label class="input-label" for="alert-target">Target rate</label>
+              <input type="number" id="alert-target" class="currency-input" step="any" min="0"
+                     placeholder="0.0000" inputmode="decimal" autocomplete="off"
+                     aria-describedby="alert-rate-preview">
+            </div>
+
+            <p class="alert-rate-preview" id="alert-rate-preview" aria-live="polite">
+              <span>Select a currency pair.</span>
+            </p>
+
+            <p class="form-message" id="alert-form-message" role="alert" hidden></p>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="alert-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <svg aria-hidden="true"><use href="#i-bell"/></svg>
+            Create alert
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast region -->
+  <div class="toast-region" id="toast-region" role="status" aria-live="polite"></div>
 
   <!-- Code execution scripts -->
   <script src="js/storage.js"></script>
@@ -468,6 +685,7 @@
   <script src="js/analytics.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/converter.js"></script>
+  <script src="js/alerts.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>
 </body>
