@@ -157,6 +157,7 @@ class UIManager {
 
     const flag = document.createElement("img");
     flag.className = "select-trigger-flag";
+    UIManager.handleFlagErrors(flag);
     flag.src = `https://flagcdn.com/w40/${details?.flag || "un"}.png`;
     flag.alt = "";
     trigger.appendChild(flag);
@@ -238,11 +239,12 @@ class UIManager {
           }
 
           li.innerHTML = `
-            <img class="custom-option-flag" src="https://flagcdn.com/w40/${details.flag}.png" alt="${code}">
+            <img class="custom-option-flag" src="https://flagcdn.com/w40/${details.flag}.png" alt="">
             <span class="custom-option-code">${code}</span>
             <span class="custom-option-name">${details.name} (${details.country || ""})</span>
           `;
           
+          UIManager.handleFlagErrors(li.querySelector("img"));
           optionsList.appendChild(li);
           visibleOptions.push(li);
         }
@@ -738,11 +740,21 @@ class UIManager {
   }
 
   /**
+   * Keeps a failed decorative flag from showing a broken image, preserving its slot.
+   */
+  static handleFlagErrors(img) {
+    img.addEventListener("error", () => {
+      img.style.visibility = "hidden";
+    }, { once: true });
+  }
+
+  /**
    * Renders a flag image for a currency code.
    */
   static flagImg(code, className = "currency-flag") {
     const img = document.createElement("img");
     img.className = className;
+    UIManager.handleFlagErrors(img);
     img.src = `https://flagcdn.com/w40/${CurrencyAPI.CURRENCY_DETAILS[code]?.flag || "un"}.png`;
     img.alt = "";
     img.loading = "lazy";
