@@ -32,10 +32,17 @@
   "screenshots": [
     {
       "src": "screenshots/dashboard.png",
-      "sizes": "1280x720",
+      "sizes": "2880x2360",
       "type": "image/png",
       "form_factor": "wide",
       "label": "GlobalFX Pro Dashboard"
+    },
+    {
+      "src": "screenshots/mobile.png",
+      "sizes": "1656x1664",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "GlobalFX Pro Mobile Dashboard and Alerts"
     }
   ],
   "scope": "./"
