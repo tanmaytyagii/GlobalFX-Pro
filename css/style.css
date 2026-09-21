@@ -1671,6 +1671,13 @@ body.light-theme .theme-toggle-btn .icon-moon { display: none; }
   font-weight: 600;
 }
 
+.table-rate-source {
+  display: block;
+  font-weight: 400;
+  font-size: var(--fs-caption);
+  color: var(--text-2);
+}
+
 .table-muted-cell {
   color: var(--text-2);
 }

@@ -994,6 +994,10 @@ class UIManager {
       rateCell.textContent = Number.isFinite(row.rate)
         ? row.rate.toFixed(UIManager.precisionFor(row.rate))
         : "—";
+      if (Number.isFinite(row.rate) && row.rateIsLive === false) {
+        rateCell.title = "Live quote unavailable; showing the latest ECB reference close.";
+        rateCell.appendChild(UIManager.el("span", "table-rate-source", "ECB close"));
+      }
       tr.appendChild(rateCell);
 
       // Changes
