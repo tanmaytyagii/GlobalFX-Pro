@@ -278,7 +278,9 @@ class ChartManager {
             }
           }
         },
-        animation: { duration: 420, easing: "easeOutQuart" }
+        animation: prefersReducedMotion()
+          ? false
+          : { duration: 420, easing: "easeOutQuart" }
       }
     };
 

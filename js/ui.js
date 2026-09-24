@@ -789,6 +789,10 @@ class UIManager {
   animateValue(elementId, start, end, duration, formatFn = (val) => Math.round(val)) {
     const obj = document.getElementById(elementId);
     if (!obj) return;
+    if (prefersReducedMotion()) {
+      obj.textContent = formatFn(end);
+      return;
+    }
 
     let startTimestamp = null;
     const step = (timestamp) => {
