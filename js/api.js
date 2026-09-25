@@ -398,7 +398,9 @@ class CurrencyAPI {
       reason: null,
       dates: series.dates.slice(startIndex),
       values: series.values.slice(startIndex),
-      partial: startIndex === 0 && series.dates.length < 2
+      // True when the series begins after the requested cutoff, so the window
+      // could not be filled. A missing weekend/holiday day is not partial.
+      partial: series.dates[0] > cutoffISO
     };
   }
 
