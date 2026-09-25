@@ -59,6 +59,26 @@ function handleCalculation() {
  * historical series the chart shows an explicit unavailable state rather than
  * an empty or placeholder plot.
  */
+
+/**
+ * Shows or clears the coverage note when sliceSeries could not fill the
+ * selected timeframe. Names the range actually plotted.
+ */
+function updateChartCoverageNote(windowSeries) {
+  const note = document.getElementById("chart-coverage-note");
+  if (!note) return;
+
+  if (windowSeries && windowSeries.partial && windowSeries.dates && windowSeries.dates.length >= 2) {
+    const from = UIManager.formatISODate(windowSeries.dates[0]);
+    const to = UIManager.formatISODate(windowSeries.dates[windowSeries.dates.length - 1]);
+    note.textContent = `Insufficient historical observations for this window — showing ${from} to ${to}.`;
+    note.hidden = false;
+  } else {
+    note.textContent = "";
+    note.hidden = true;
+  }
+}
+
 function drawChart() {
   const base = appState.fromCurrency;
   const target = appState.toCurrency;
@@ -71,6 +91,7 @@ function drawChart() {
   if (!appState.dataset) {
     ChartManager.renderState("fx-history-chart", CurrencyAPI.STATE.LOADING, "Loading ECB historical data…");
     setChartHeadline(null, null);
+    updateChartCoverageNote(null);
     uiManager.renderTrendAnalysisPanel({}, base, target);
     return;
   }
@@ -86,12 +107,14 @@ function drawChart() {
 
     ChartManager.renderState("fx-history-chart", appState.dataset.state, message);
     setChartHeadline(null, null);
+    updateChartCoverageNote(null);
     uiManager.renderTrendAnalysisPanel({}, base, target);
     return;
   }
 
   const windowSeries = CurrencyAPI.sliceSeries(series, appState.activeTimeframe);
   const performance = CurrencyAPI.getPerformance(series, appState.activeTimeframe);
+  updateChartCoverageNote(windowSeries);
 
   ChartManager.renderHistoricalChart("fx-history-chart", {
     dates: windowSeries.dates,

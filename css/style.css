@@ -2576,3 +2576,12 @@ body.theme-switching *::after {
 
   .swap-button:hover { transform: none; }
 }
+
+
+/* Shown when the selected timeframe reaches past the pair's earliest observation. */
+.chart-coverage-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--text-muted, #8a94a6);
+}
